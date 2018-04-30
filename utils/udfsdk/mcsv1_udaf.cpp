@@ -36,6 +36,8 @@ UDAF_MAP UDAFMap::fm;
 #include "ssq.h"
 #include "median.h"
 #include "avg_mode.h"
+#include "regr_avgx.h"
+#include "avgx.h"
 UDAF_MAP& UDAFMap::getMap()
 {
     if (fm.size() > 0)
@@ -52,6 +54,8 @@ UDAF_MAP& UDAFMap::getMap()
     fm["ssq"] = new ssq();
     fm["median"] = new median();
     fm["avg_mode"] = new avg_mode();
+    fm["regr_avgx"] = new regr_avgx();
+    fm["avgx"] = new avgx();
 
     return fm;
 }
@@ -126,6 +130,7 @@ bool mcsv1Context::operator==(const mcsv1Context& c) const
             || fEndFrame        != c.fEndFrame
             || fStartConstant   != c.fStartConstant
             || fEndConstant     != c.fEndConstant)
+            || fParamCount      != c.fParamCount)
         return false;
 
     return true;
@@ -217,6 +222,7 @@ void mcsv1Context::serialize(messageqcpp::ByteStream& b) const
     b << (uint32_t)fEndFrame;
     b << fStartConstant;
     b << fEndConstant;
+    b << fParamCount;
 }
 
 void mcsv1Context::unserialize(messageqcpp::ByteStream& b)
@@ -238,6 +244,7 @@ void mcsv1Context::unserialize(messageqcpp::ByteStream& b)
     fEndFrame = (WF_FRAME)frame;
     b >> fStartConstant;
     b >> fEndConstant;
+    b >> fParamCount;
 }
 
 void UserData::serialize(messageqcpp::ByteStream& bs) const

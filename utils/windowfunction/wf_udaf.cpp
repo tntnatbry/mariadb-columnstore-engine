@@ -150,8 +150,8 @@ template<typename T>
 void WF_udaf<T>::parseParms(const std::vector<execplan::SRCP>& parms)
 {
     bRespectNulls = true;
-    // parms[1]: respect null | ignore null
-    ConstantColumn* cc = dynamic_cast<ConstantColumn*>(parms[1].get());
+    // The last parms: respect null | ignore null
+    ConstantColumn* cc = dynamic_cast<ConstantColumn*>(parms[parms.size()-1].get());
     idbassert(cc != NULL);
     bool isNull = false;  // dummy, harded coded
     bRespectNulls = (cc->getIntVal(fRow, isNull) > 0);
@@ -167,51 +167,67 @@ bool WF_udaf<T>::dropValues(int64_t b, int64_t e)
     }
 
     mcsv1sdk::mcsv1_UDAF::ReturnCode rc;
-    uint64_t colOut = fFieldIndex[0];
-    uint64_t colIn = fFieldIndex[1];
 
-    mcsv1sdk::ColumnDatum datum;
-    datum.dataType = fRow.getColType(colIn);
-    datum.scale = fRow.getScale(colIn);
-    datum.precision = fRow.getPrecision(colOut);
+    // Turn on the Analytic flag so the function is aware it is being called
+    // as a Window Function.
+    getContext().setContextFlag(mcsv1sdk::CONTEXT_IS_ANALYTIC);
+
+    // Put the parameter metadata (type, scale, precision) into valsIn
+    mcsv1sdk::ColumnDatum valsIn[getContext().getParameterCount()];
+    for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
+    {
+        uint64_t colIn = fFieldIndex[i+1];
+        mcsv1sdk::ColumnDatum& datum = valsIn[i];
+        datum.dataType = fRow.getColType(colIn);
+        datum.scale = fRow.getScale(colIn);
+        datum.precision = fRow.getPrecision(colIn);
+    }
 
     for (int64_t i = b; i < e; i++)
     {
         if (i % 1000 == 0 && fStep->cancelled())
             break;
 
+        bool bHasNull = false;
+        bool bHasNull = false;
         fRow.setData(getPointer(fRowData->at(i)));
         // Turn on NULL flags
-        std::vector<uint32_t> flags;
-        uint32_t flag = 0;
+        uint32_t flags[getContext().getParameterCount()];
 
-        if (fRow.isNullValue(colIn) == true)
+        for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
         {
-            if (!bRespectNulls)
+            uint64_t colIn = fFieldIndex[i+1];
+            mcsv1sdk::ColumnDatum& datum = valsIn[i];
+            flags[i] = 0;
+            if (fRow.isNullValue(colIn) == true)
+            {
+                if (!bRespectNulls)
+                {
+                    bHasNull = true;
+                    break;
+                }
+
+                flags[i] |= mcsv1sdk::PARAM_IS_NULL;
+            }
+
+            T valIn;
+            getValue(colIn, valIn, &datum.dataType);
+
+            // Check for distinct, if turned on.
+            if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
             {
                 continue;
             }
 
-            flag |= mcsv1sdk::PARAM_IS_NULL;
+            if (fDistinct)
+                fSet.insert(valIn);
+
+            datum.columnData = valIn;
         }
-
-        flags.push_back(flag);
-        getContext().setDataFlags(&flags);
-
-        T valIn;
-        getValue(colIn, valIn, &datum.dataType);
-
-        // Check for distinct, if turned on.
-        // TODO: when we impliment distinct, we need to revist this.
-        if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
+        if (bHasNull)
         {
             continue;
         }
-
-        datum.columnData = valIn;
-
-        std::vector<mcsv1sdk::ColumnDatum> valsIn;
-        valsIn.push_back(datum);
 
         rc = getContext().getFunction()->dropValue(&getContext(), valsIn);
 
@@ -442,59 +458,67 @@ void WF_udaf<T>::operator()(int64_t b, int64_t e, int64_t c)
         else if (fPrev <= e && fPrev > c)
             e = c;
 
-        uint64_t colIn = fFieldIndex[1];
+        // Turn on the Analytic flag so the function is aware it is being called
+        // as a Window Function.
+        getContext().setContextFlag(mcsv1sdk::CONTEXT_IS_ANALYTIC);
 
-        mcsv1sdk::ColumnDatum datum;
-        datum.dataType = fRow.getColType(colIn);
-        datum.scale = fRow.getScale(colIn);
-        datum.precision = fRow.getPrecision(colOut);
+        // Put the parameter metadata (type, scale, precision) into valsIn
+        mcsv1sdk::ColumnDatum valsIn[getContext().getParameterCount()];
+        for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
+        {
+            uint64_t colIn = fFieldIndex[i+1];
+            mcsv1sdk::ColumnDatum& datum = valsIn[i];
+            datum.dataType = fRow.getColType(colIn);
+            datum.scale = fRow.getScale(colIn);
+            datum.precision = fRow.getPrecision(colIn);
+        }
 
         if (b <= c && c <= e)
             getContext().setContextFlag(mcsv1sdk::CONTEXT_HAS_CURRENT_ROW);
         else
             getContext().clearContextFlag(mcsv1sdk::CONTEXT_HAS_CURRENT_ROW);
 
-
-        for (int64_t i = b; i <= e; i++)
-        {
-            if (i % 1000 == 0 && fStep->cancelled())
-                break;
-
-            fRow.setData(getPointer(fRowData->at(i)));
-            // Turn on NULL flags
-            std::vector<uint32_t> flags;
-            uint32_t flag = 0;
-
-            if (fRow.isNullValue(colIn) == true)
+        bool bHasNull = false;
+            for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
             {
-                if (!bRespectNulls)
+                uint64_t colIn = fFieldIndex[i+1];
+                mcsv1sdk::ColumnDatum& datum = valsIn[i];
+
+                // Turn on Null flags or skip based on respect nulls
+                flags[i] = 0;
+                if (fRow.isNullValue(colIn) == true)
+                {
+                    if (!bRespectNulls)
+                    {
+                        bHasNull = true;
+                        break;
+                    }
+
+                    flags[i] |= mcsv1sdk::PARAM_IS_NULL;
+                }
+
+                T valIn;
+                getValue(colIn, valIn, &datum.dataType);
+
+                // Check for distinct, if turned on.
+                if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
                 {
                     continue;
                 }
 
-                flag |= mcsv1sdk::PARAM_IS_NULL;
+                if (fDistinct)
+                    fSet.insert(valIn);
+
+                datum.columnData = valIn;
             }
-
-            flags.push_back(flag);
-            getContext().setDataFlags(&flags);
-
-            T valIn;
-            getValue(colIn, valIn, &datum.dataType);
-
-            // Check for distinct, if turned on.
-            if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
+            // Skip if any value is NULL and respect nulls is off.
+            if (bHasNull)
             {
                 continue;
             }
 
-            if (fDistinct)
-                fSet.insert(valIn);
-
-            datum.columnData = valIn;
-
-            std::vector<mcsv1sdk::ColumnDatum> valsIn;
-            valsIn.push_back(datum);
-
+            getContext().setDataFlags(flags);
+            
             rc = getContext().getFunction()->nextValue(&getContext(), valsIn);
 
             if (rc == mcsv1sdk::mcsv1_UDAF::ERROR)

@@ -98,25 +98,6 @@ AggregateColumn::AggregateColumn(const uint32_t sessionID):
 {
 }
 
-AggregateColumn::AggregateColumn(const AggOp aggOp, ReturnedColumn* parm, const uint32_t sessionID):
-    ReturnedColumn(sessionID),
-    fAggOp(aggOp),
-    fAsc(false),
-    fData(aggOp + "(" + parm->data() + ")")
-{
-    fFunctionParms.reset(parm);
-}
-
-AggregateColumn::AggregateColumn(const AggOp aggOp, const string& content, const uint32_t sessionID):
-    ReturnedColumn(sessionID),
-    fAggOp(aggOp),
-    fAsc(false),
-    fData(aggOp + "(" + content + ")")
-{
-    // TODO: need to handle distinct
-    fFunctionParms.reset(new ArithmeticColumn(content));
-}
-
 // deprecated constructor. use function name as string
 AggregateColumn::AggregateColumn(const std::string& functionName, ReturnedColumn* parm, const uint32_t sessionID):
     ReturnedColumn(sessionID),
@@ -166,10 +147,14 @@ const string AggregateColumn::toString() const
 
     if (fAlias.length() > 0) output << "/Alias: " << fAlias << endl;
 
-    if (fFunctionParms == 0)
-        output << "No arguments" << endl;
+    if (fAggParms.size() == 0)
+        output << "No arguments";
     else
-        output << *fFunctionParms << endl;
+        for (uint32_t i = 0; i < fAggParms.size(); ++i)
+        {
+            output << *(fAggParms[i]) << " ";
+        }
+    output << endl;
 
     if (fConstCol)
         output << *fConstCol;
@@ -191,10 +176,11 @@ void AggregateColumn::serialize(messageqcpp::ByteStream& b) const
     b << fFunctionName;
     b << static_cast<uint8_t>(fAggOp);
 
-    if (fFunctionParms == 0)
-        b << (uint8_t) ObjectReader::NULL_CLASS;
-    else
-        fFunctionParms->serialize(b);
+    b << static_cast<uint32_t>(fAggParms.size());
+    for (uint32_t i = 0; i < fAggParms.size(); ++i)
+    {
+        fAggParms[i]->serialize(b);
+    }
 
     b << static_cast<uint32_t>(fGroupByColList.size());
 
@@ -219,15 +205,25 @@ void AggregateColumn::serialize(messageqcpp::ByteStream& b) const
 
 void AggregateColumn::unserialize(messageqcpp::ByteStream& b)
 {
+    messageqcpp::ByteStream::quadbyte size;
+    messageqcpp::ByteStream::quadbyte i;
+    ReturnedColumn* rc;
+
     ObjectReader::checkType(b, ObjectReader::AGGREGATECOLUMN);
     fGroupByColList.erase(fGroupByColList.begin(), fGroupByColList.end());
     fProjectColList.erase(fProjectColList.begin(), fProjectColList.end());
+    fAggParms.erase(fAggParms.begin(), fAggParms.end());
     ReturnedColumn::unserialize(b);
     b >> fFunctionName;
     b >> fAggOp;
-    //delete fFunctionParms;
-    fFunctionParms.reset(
-        dynamic_cast<ReturnedColumn*>(ObjectReader::createTreeNode(b)));
+
+    b >> size;
+    for (i = 0; i < size; i++)
+    {
+        rc = dynamic_cast<ReturnedColumn*>(ObjectReader::createTreeNode(b));
+        SRCP srcp(rc);
+        fAggParms.push_back(srcp);
+    }
 
     messageqcpp::ByteStream::quadbyte size;
     messageqcpp::ByteStream::quadbyte i;
@@ -261,6 +257,7 @@ void AggregateColumn::unserialize(messageqcpp::ByteStream& b)
 bool AggregateColumn::operator==(const AggregateColumn& t) const
 {
     const ReturnedColumn* rc1, *rc2;
+    AggParms::const_iterator it, it2;
 
     rc1 = static_cast<const ReturnedColumn*>(this);
     rc2 = static_cast<const ReturnedColumn*>(&t);
@@ -277,13 +274,17 @@ bool AggregateColumn::operator==(const AggregateColumn& t) const
     if (fAggOp != t.fAggOp)
         return false;
 
-    if (fFunctionParms.get() != NULL && t.fFunctionParms.get() != NULL)
+    if (aggParms().size() != t.aggParms().size())
     {
-        if (*fFunctionParms.get() != t.fFunctionParms.get())
+        return false;
+    }
+    for (it = fAggParms.begin(), it2 = t.fAggParms.begin(); 
+         it != fAggParms.end();
+         ++it, ++it2)
+    {
+        if (**it != **it2)
             return false;
     }
-    else if (fFunctionParms.get() != NULL || t.fFunctionParms.get() != NULL)
-        return false;
 
     //if (fAlias != t.fAlias)
     //	return false;
