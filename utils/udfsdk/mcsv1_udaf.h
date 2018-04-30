@@ -394,7 +394,7 @@ public:
     EXPORT uint64_t getContextFlags() const;
     EXPORT uint32_t getUserDataSize() const;
     EXPORT uint32_t* getDataFlags();
-    EXPORT void setDataFlags(std::vector<uint32_t>* flags);
+    EXPORT void setDataFlags(uint32_t* flags);
     EXPORT void setInterrupted(bool interrupted);
     EXPORT void setInterrupted(bool* interrupted);
     EXPORT mcsv1sdk::mcsv1_UDAF* getFunction();
