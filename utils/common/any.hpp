@@ -9,6 +9,7 @@
  * http://www.boost.org/LICENSE_1_0.txt
  */
 
+#include  <stdint.h>
 #include <stdexcept>
 
 namespace static_any
@@ -54,25 +55,15 @@ namespace anyimpl
 	template<typename T>
 	struct big_any_policy : typed_base_any_policy<T>
 	{
-		virtual void static_delete(void** x)
-        {
-            if (*x)
-    			delete(*reinterpret_cast<T**>(x));
-            *x = NULL;
-        }
-		virtual void copy_from_value(void const* src, void** dest)
-        {
-		   *dest = new T(*reinterpret_cast<T const*>(src));
-        }
-		virtual void clone(void* const* src, void** dest)
-        {
-		   *dest = new T(**reinterpret_cast<T* const*>(src));
-        }
-		virtual void move(void* const* src, void** dest)
-        {
-		  (*reinterpret_cast<T**>(dest))->~T();
-		  **reinterpret_cast<T**>(dest) = **reinterpret_cast<T* const*>(src);
-        }
+		virtual void static_delete(void** x) { if (*x) 
+			delete(*reinterpret_cast<T**>(x)); *x = NULL; }
+		virtual void copy_from_value(void const* src, void** dest) { 
+		   *dest = new T(*reinterpret_cast<T const*>(src)); }
+		virtual void clone(void* const* src, void** dest) { 
+		   *dest = new T(**reinterpret_cast<T* const*>(src)); }
+		virtual void move(void* const* src, void** dest) { 
+		  (*reinterpret_cast<T**>(dest))->~T(); 
+		  **reinterpret_cast<T**>(dest) = **reinterpret_cast<T* const*>(src); }
 		virtual void* get_value(void** src) { return *src; }
 	};
 
@@ -197,7 +188,37 @@ public:
         return assign(x);
     }
 
+    /// Less than operator for sorting
+    bool operator<(const any& x) const {
+        if (policy == x.policy)
+        {
+            void* p1 = const_cast<void*>(object);
+            void* p2 = const_cast<void*>(x.object);
+            return memcmp(policy->get_value(&p1), 
+                          x.policy->get_value(&p2),  
+                          policy->get_size()) < 0 ? 1 : 0;
+        }
+        return 0;
+    }
+
+    /// equal operator
+    bool operator==(const any& x) const {
+        if (policy == x.policy)
+        {
+            void* p1 = const_cast<void*>(object);
+            void* p2 = const_cast<void*>(x.object);
+            return memcmp(policy->get_value(&p1), 
+                          x.policy->get_value(&p2),  
+                          policy->get_size()) == 0 ? 1 : 0;
+        }
+        return 0;
+    }
+
     /// Utility functions
+    uint8_t getHash() const {
+        void* p1 = const_cast<void*>(object);
+        return *(uint64_t*)policy->get_value(&p1) % 4048;
+    }
     any& swap(any& x) {
         std::swap(policy, x.policy);
         std::swap(object, x.object);

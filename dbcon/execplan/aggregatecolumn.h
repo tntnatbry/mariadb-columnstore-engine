@@ -100,7 +100,7 @@ public:
     /**
      * ctor
      */
-    AggregateColumn(const AggOp aggop, const std::string& content, const uint32_t sessionID = 0);
+//    AggregateColumn(const AggOp aggop, const std::string& content, const uint32_t sessionID = 0);
 
     /**
      * ctor

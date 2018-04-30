@@ -2024,7 +2024,7 @@ int WriteEngineWrapper::insertColumnRecsBinary(const TxnID& txnid,
             ((totalRow - rowsLeft) > 0) &&
             (rowIdArray[totalRow - rowsLeft - 1] >= (RID)INITIAL_EXTENT_ROWS_TO_DISK))
     {
-        for (int32_t k = 0; k < colStructList.size(); k++)
+        for (size_t k = 0; k < colStructList.size(); k++)
         {
             // Skip the selected column
             if (k == colId)

@@ -283,6 +283,7 @@ const JobStepVector doProject(const RetColsVector& retCols, JobInfo& jobInfo)
     {
         const SimpleColumn* sc = dynamic_cast<const SimpleColumn*>(retCols[i].get());
         const WindowFunctionColumn* wc = NULL;
+        const RowColumn* rowCol = NULL;
 
         if (sc != NULL)
         {
@@ -295,6 +296,12 @@ const JobStepVector doProject(const RetColsVector& retCols, JobInfo& jobInfo)
             CalpontSystemCatalog::ColType ct = wc->resultType();
             TupleInfo ti(setExpTupleInfo(ct, eid, retCols[i].get()->alias(), jobInfo));
             jobInfo.pjColList.push_back(ti);
+        }
+        else if ((rowCol = dynamic_cast<const RowColumn*>(retCols[i].get())) != NULL)
+        {
+            // MCOL-1201 - add multi-parameter support to UDAnF
+            // Lets try ignoring it. The parameters have already individually 
+            // been pushed into retCols and will be handled as the loop runs.
         }
         else
         {
@@ -890,7 +897,34 @@ const JobStepVector doAggProject(const CalpontSelectExecutionPlan* csep, JobInfo
 
             continue;
         }
+#if 0
+        // MCOL-1201 Add support for multi-parameter UDAnF
+		UDAFColumn* udafc = dynamic_cast<UDAFColumn*>(retCols[i].get());
+		if (udafc != NULL)
+		{
+			srcp = udafc->aggParms()[0];
+			const RowColumn* rcp = dynamic_cast<const RowColumn*>(srcp.get());
 
+			const vector<SRCP>& cols = rcp->columnVec();
+			for (vector<SRCP>::const_iterator j = cols.begin(); j != cols.end(); j++)
+			{
+                srcp = *j;
+				if (dynamic_cast<const ConstantColumn*>(srcp.get()) == NULL)
+					retCols.push_back(srcp);
+
+                // Do we need this?
+        		const ArithmeticColumn* ac = dynamic_cast<const ArithmeticColumn*>(srcp.get());
+        		const FunctionColumn* fc = dynamic_cast<const FunctionColumn*>(srcp.get());
+        		if (ac != NULL || fc != NULL)
+        		{
+        			// bug 3728, make a dummy expression step for each expression.
+        			scoped_ptr<ExpressionStep> es(new ExpressionStep(jobInfo));
+        			es->expression(srcp, jobInfo);
+        		}
+			}
+			continue;
+		}
+#endif
         srcp = retCols[i];
         const AggregateColumn* ag = dynamic_cast<const AggregateColumn*>(retCols[i].get());
         // bug 3728 Make a dummy expression for srcp if it is an

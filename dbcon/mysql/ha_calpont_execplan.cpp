@@ -4204,8 +4204,7 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
                         if (ac->aggOp() == AggregateColumn::COUNT)
                             ac->aggOp(AggregateColumn::COUNT_ASTERISK);
 
-                        parm.reset(buildReturnedColumn(sfitemp, gwi, gwi.fatalParseError));
-                        ac->constCol(parm);
+                        ac->constCol(SRCP(buildReturnedColumn(sfitemp, gwi, gwi.fatalParseError)));
                         break;
                     }
 
@@ -4542,6 +4541,19 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
                 {
                     gwi.fatalParseError = true;
                     gwi.parseErrorText = udafc->getContext().getErrorMessage();
+                    if (ac)
+                        delete ac;
+                    return NULL;
+                }
+
+                // UDAF_OVER_REQUIRED means that this function is for Window
+                // Function only. Reject it here in aggregate land.
+                if (udafc->getContext().getRunFlag(UDAF_OVER_REQUIRED))
+                {
+                    gwi.fatalParseError = true;
+                    gwi.parseErrorText =
+                        logging::IDBErrorInfo::instance()->errorMsg(logging::ERR_WINDOW_FUNC_ONLY,
+                                context.getName());
                     if (ac)
                         delete ac;
                     return NULL;
@@ -9967,7 +9979,7 @@ int getGroupPlan(gp_walk_info& gwi, SELECT_LEX& select_lex, SCSEP& csep, cal_gro
             return ER_CHECK_NOT_IMPLEMENTED;
         }
 
-        (*coliter)->functionParms(minSc);
+        (*coliter)->aggParms().push_back(minSc);
     }
 
     std::vector<FunctionColumn*>::iterator funciter;

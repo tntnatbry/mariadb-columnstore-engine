@@ -5273,7 +5273,6 @@ int ha_calpont_impl_group_by_init(ha_calpont_group_by_handler* group_hand, TABLE
             execplan::CalpontSelectExecutionPlan::ColumnMap::iterator colMapIter;
             execplan::CalpontSelectExecutionPlan::ColumnMap::iterator condColMapIter;
             execplan::ParseTree* ptIt;
-            execplan::ReturnedColumn* rcIt;
             for(TABLE_LIST* tl = gi.groupByTables; tl; tl=tl->next_local)
             {
                 mapiter = ci->tableMap.find(tl->table);

@@ -99,6 +99,18 @@ AggregateColumn::AggregateColumn(const uint32_t sessionID):
 }
 
 // deprecated constructor. use function name as string
+/*
+AggregateColumn::AggregateColumn(const std::string& functionName, ReturnedColumn* parm, const uint32_t sessionID):
+    ReturnedColumn(sessionID),
+    fFunctionName(functionName),
+    fAggOp(NOOP),
+    fAsc(false),
+    fData(functionName + "(" + parm->data() + ")")
+{
+    fFunctionParms.reset(parm);
+}
+*/
+// deprecated constructor. use function name as string
 AggregateColumn::AggregateColumn(const string& functionName, const string& content, const uint32_t sessionID):
     ReturnedColumn(sessionID),
     fFunctionName(functionName),
