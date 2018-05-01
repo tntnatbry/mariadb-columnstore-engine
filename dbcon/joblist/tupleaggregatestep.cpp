@@ -4557,7 +4557,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
         }
 
         // there is avg(k), but no count(k) in the select list
-        uint64_t lastCol = returnedColVec.size()i-multiParms;
+        uint64_t lastCol = returnedColVec.size() - multiParms;
 
         for (map<uint32_t, SP_ROWAGG_FUNC_t>::iterator k = avgFuncMap.begin(); k != avgFuncMap.end(); k++)
         {

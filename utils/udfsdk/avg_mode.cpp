@@ -186,7 +186,7 @@ mcsv1_UDAF::ReturnCode avg_mode::evaluate(mcsv1Context* context, static_any::any
     return mcsv1_UDAF::SUCCESS;
 }
 
-mcsv1_UDAF::ReturnCode avg_mode::dropValue(mcsv1Context* context, ColumnDatum* valsIn)
+mcsv1_UDAF::ReturnCode avg_mode::dropValue(mcsv1Context* context, ColumnDatum* valsDropped)
 {
     static_any::any& valIn = valsDropped[0].columnData;
     MODE_DATA& data = static_cast<ModeData*>(context->getUserData())->mData;

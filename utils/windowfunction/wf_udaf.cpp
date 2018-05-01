@@ -189,7 +189,6 @@ bool WF_udaf<T>::dropValues(int64_t b, int64_t e)
             break;
 
         bool bHasNull = false;
-        bool bHasNull = false;
         fRow.setData(getPointer(fRowData->at(i)));
         // Turn on NULL flags
         uint32_t flags[getContext().getParameterCount()];
@@ -479,6 +478,15 @@ void WF_udaf<T>::operator()(int64_t b, int64_t e, int64_t c)
             getContext().clearContextFlag(mcsv1sdk::CONTEXT_HAS_CURRENT_ROW);
 
         bool bHasNull = false;
+        for (int64_t i = b; i <= e; i++)
+        {
+            if (i % 1000 == 0 && fStep->cancelled())
+                break;
+
+            fRow.setData(getPointer(fRowData->at(i)));
+
+            // NULL flags
+            uint32_t flags[getContext().getParameterCount()];
             for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
             {
                 uint64_t colIn = fFieldIndex[i+1];
