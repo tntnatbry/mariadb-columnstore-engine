@@ -34,7 +34,7 @@ struct ssq_data
 
 #define OUT_TYPE int64_t
 mcsv1_UDAF::ReturnCode ssq::init(mcsv1Context* context,
-                                 COL_TYPES& colTypes)
+                                 ColumnDatum* colTypes)
 {
     if (context->getParameterCount() < 1)
     {

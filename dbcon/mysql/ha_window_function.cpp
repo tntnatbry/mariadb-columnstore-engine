@@ -380,9 +380,6 @@ ReturnedColumn* buildWindowFunctionColumn(Item* item, gp_walk_info& gwi, bool& n
         // as a Window Function.
         context.setContextFlag(CONTEXT_IS_ANALYTIC);
 
-        COL_TYPES colTypes;
-        execplan::CalpontSelectExecutionPlan::ColumnMap::iterator cmIter;
-
         // Build the column type vector.
         // Modified for MCOL-1201 multi-argument aggregate
         for (size_t i = 0; i < funcParms.size(); ++i)

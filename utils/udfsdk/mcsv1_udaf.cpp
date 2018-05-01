@@ -118,8 +118,8 @@ bool mcsv1Context::operator==(const mcsv1Context& c) const
 {
     // We don't test the per row data fields. They don't determine
     // if it's the same Context.
-    if (getName()        != c.getName()
-            ||	fRunFlags        != c.fRunFlags
+    if (getName() != c.getName()
+            ||fRunFlags        != c.fRunFlags
             || fContextFlags    != c.fContextFlags
             || fUserDataSize    != c.fUserDataSize
             || fResultType      != c.fResultType
@@ -128,7 +128,7 @@ bool mcsv1Context::operator==(const mcsv1Context& c) const
             || fStartFrame      != c.fStartFrame
             || fEndFrame        != c.fEndFrame
             || fStartConstant   != c.fStartConstant
-            || fEndConstant     != c.fEndConstant)
+            || fEndConstant     != c.fEndConstant
             || fParamCount      != c.fParamCount)
         return false;
 
