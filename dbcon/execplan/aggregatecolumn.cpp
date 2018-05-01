@@ -99,17 +99,6 @@ AggregateColumn::AggregateColumn(const uint32_t sessionID):
 }
 
 // deprecated constructor. use function name as string
-AggregateColumn::AggregateColumn(const std::string& functionName, ReturnedColumn* parm, const uint32_t sessionID):
-    ReturnedColumn(sessionID),
-    fFunctionName(functionName),
-    fAggOp(NOOP),
-    fAsc(false),
-    fData(functionName + "(" + parm->data() + ")")
-{
-    fFunctionParms.reset(parm);
-}
-
-// deprecated constructor. use function name as string
 AggregateColumn::AggregateColumn(const string& functionName, const string& content, const uint32_t sessionID):
     ReturnedColumn(sessionID),
     fFunctionName(functionName),
@@ -118,20 +107,21 @@ AggregateColumn::AggregateColumn(const string& functionName, const string& conte
     fData(functionName + "(" + content + ")")
 {
     // TODO: need to handle distinct
-    fFunctionParms.reset(new ArithmeticColumn(content));
+     SRCP srcp(new ArithmeticColumn(content));
+     fAggParms.push_back(srcp);
 }
 
 AggregateColumn::AggregateColumn( const AggregateColumn& rhs, const uint32_t sessionID ):
     ReturnedColumn(rhs, sessionID),
     fFunctionName (rhs.fFunctionName),
     fAggOp(rhs.fAggOp),
-    fFunctionParms(rhs.fFunctionParms),
     fTableAlias(rhs.tableAlias()),
     fAsc(rhs.asc()),
     fData(rhs.data()),
     fConstCol(rhs.fConstCol)
 {
     fAlias = rhs.alias();
+    fAggParms = rhs.fAggParms;
 }
 
 /**
@@ -225,10 +215,6 @@ void AggregateColumn::unserialize(messageqcpp::ByteStream& b)
         fAggParms.push_back(srcp);
     }
 
-    messageqcpp::ByteStream::quadbyte size;
-    messageqcpp::ByteStream::quadbyte i;
-    ReturnedColumn* rc;
-
     b >> size;
 
     for (i = 0; i < size; i++)
@@ -286,8 +272,6 @@ bool AggregateColumn::operator==(const AggregateColumn& t) const
             return false;
     }
 
-    //if (fAlias != t.fAlias)
-    //	return false;
     if (fTableAlias != t.fTableAlias)
         return false;
 
@@ -646,3 +630,4 @@ AggregateColumn::AggOp AggregateColumn::agname2num(const string& agname)
 }
 
 } // namespace execplan
+

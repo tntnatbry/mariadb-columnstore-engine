@@ -4036,7 +4036,6 @@ ParseTree* buildParseTree(Item_func* item, gp_walk_info& gwi, bool& nonSupport)
 ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
 {
     // MCOL-1201 For UDAnF multiple parameters
-    RowColumn* rowCol = NULL; 
 	vector<SRCP> selCols;
 	vector<SRCP> orderCols;
 
