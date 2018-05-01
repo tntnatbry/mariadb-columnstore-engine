@@ -283,7 +283,6 @@ const JobStepVector doProject(const RetColsVector& retCols, JobInfo& jobInfo)
     {
         const SimpleColumn* sc = dynamic_cast<const SimpleColumn*>(retCols[i].get());
         const WindowFunctionColumn* wc = NULL;
-        const RowColumn* rowCol = NULL;
 
         if (sc != NULL)
         {
@@ -296,12 +295,6 @@ const JobStepVector doProject(const RetColsVector& retCols, JobInfo& jobInfo)
             CalpontSystemCatalog::ColType ct = wc->resultType();
             TupleInfo ti(setExpTupleInfo(ct, eid, retCols[i].get()->alias(), jobInfo));
             jobInfo.pjColList.push_back(ti);
-        }
-        else if ((rowCol = dynamic_cast<const RowColumn*>(retCols[i].get())) != NULL)
-        {
-            // MCOL-1201 - add multi-parameter support to UDAnF
-            // Lets try ignoring it. The parameters have already individually 
-            // been pushed into retCols and will be handled as the loop runs.
         }
         else
         {
