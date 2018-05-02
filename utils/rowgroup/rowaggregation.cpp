@@ -2097,17 +2097,17 @@ void RowAggregation::doUDAF(const Row& rowIn, int64_t colIn, int64_t colOut, int
                 break;
             }
 
-            case execplan::CalpontSystemCatalog::CHAR:
-            case execplan::CalpontSystemCatalog::VARCHAR:
-            case execplan::CalpontSystemCatalog::TEXT:
-            case execplan::CalpontSystemCatalog::VARBINARY:
-            case execplan::CalpontSystemCatalog::CLOB:
-            case execplan::CalpontSystemCatalog::BLOB:
-            {
-                datum.dataType = colDataType;
-                datum.columnData = rowIn.getStringField(colIn);
-                break;
-            }
+                case execplan::CalpontSystemCatalog::CHAR:
+                case execplan::CalpontSystemCatalog::VARCHAR:
+                case execplan::CalpontSystemCatalog::TEXT:
+                case execplan::CalpontSystemCatalog::VARBINARY:
+                case execplan::CalpontSystemCatalog::CLOB:
+                case execplan::CalpontSystemCatalog::BLOB:
+                {
+                    datum.dataType = colDataType;
+                    datum.columnData = rowIn.getStringField(colIn);
+                    break;
+                }
 
                 default:
                 {
