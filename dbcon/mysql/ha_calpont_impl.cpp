@@ -675,8 +675,11 @@ int fetchNextRow(uchar* buf, cal_table_info& ti, cal_connection_info* ci)
 
                     //double double_val = *(double*)(&value);
                     //f2->store(double_val);
-                    if (f2->decimals() < (uint32_t)row.getScale(s))
+                    if (f2->decimals() == DECIMAL_NOT_SPECIFIED || 
+                        f2->decimals() < (uint32_t)row.getScale(s))
+                    {
                         f2->dec = (uint32_t)row.getScale(s);
+                    }
 
                     f2->store(dl);
 

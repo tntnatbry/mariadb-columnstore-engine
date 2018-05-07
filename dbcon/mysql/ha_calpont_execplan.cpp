@@ -4181,8 +4181,7 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
                         if (ac->aggOp() == AggregateColumn::COUNT)
                             ac->aggOp(AggregateColumn::COUNT_ASTERISK);
 
-                        parm.reset(buildReturnedColumn(sfitemp, gwi, gwi.fatalParseError));
-                        ac->constCol(parm);
+                        ac->constCol(SRCP(buildReturnedColumn(sfitemp, gwi, gwi.fatalParseError)));
                         break;
                     }
 

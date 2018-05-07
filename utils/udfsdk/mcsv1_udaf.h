@@ -77,6 +77,7 @@
 #include "any.hpp"
 #include "calpontsystemcatalog.h"
 #include "wf_frame.h"
+#include "my_decimal_limits.h"
 
 using namespace execplan;
 
@@ -296,6 +297,7 @@ public:
     // This only makes sense if the return type is decimal, but should be set
     // to (0, -1) for other types if the inout is decimal.
     // valid in init()
+    // Set the scale to DECIMAL_NOT_SPECIFIED if you want a floating decimal.
     EXPORT bool setScale(int32_t scale);
     EXPORT bool setPrecision(int32_t precision);
 

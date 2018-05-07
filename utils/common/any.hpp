@@ -9,6 +9,7 @@
  * http://www.boost.org/LICENSE_1_0.txt
  */
 
+#include  <stdint.h>
 #include <stdexcept>
 
 namespace static_any
@@ -187,7 +188,37 @@ public:
         return assign(x);
     }
 
+    /// Less than operator for sorting
+    bool operator<(const any& x) const {
+        if (policy == x.policy)
+        {
+            void* p1 = const_cast<void*>(object);
+            void* p2 = const_cast<void*>(x.object);
+            return memcmp(policy->get_value(&p1), 
+                          x.policy->get_value(&p2),  
+                          policy->get_size()) < 0 ? 1 : 0;
+        }
+        return 0;
+    }
+
+    /// equal operator
+    bool operator==(const any& x) const {
+        if (policy == x.policy)
+        {
+            void* p1 = const_cast<void*>(object);
+            void* p2 = const_cast<void*>(x.object);
+            return memcmp(policy->get_value(&p1), 
+                          x.policy->get_value(&p2),  
+                          policy->get_size()) == 0 ? 1 : 0;
+        }
+        return 0;
+    }
+
     /// Utility functions
+    uint8_t getHash() const {
+        void* p1 = const_cast<void*>(object);
+        return *(uint64_t*)policy->get_value(&p1) % 4048;
+    }
     any& swap(any& x) {
         std::swap(policy, x.policy);
         std::swap(object, x.object);

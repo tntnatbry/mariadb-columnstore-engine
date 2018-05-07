@@ -1305,7 +1305,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
 
             if (it == jobInfo.projectionCols.end())
             {
-                throw logic_error("prep1PhaseAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                throw logic_error("(1)prep1PhaseAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
             }
         }
         else
@@ -1471,7 +1471,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
 
                 if (!udafFuncCol)
                 {
-                    throw logic_error("prep1PhaseAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
+                    throw logic_error("(2)prep1PhaseAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                 }
 
                 pUDAFFunc = udafFuncCol->fUDAFContext.getFunction();
@@ -1485,6 +1485,17 @@ void TupleAggregateStep::prep1PhaseAggregate(
                 widthAgg.push_back(udafFuncCol->fUDAFContext.getColWidth());
                 break;
             }
+
+            case ROWAGG_MULTI_PARM:
+            {
+                oidsAgg.push_back(oidsProj[colProj]);
+                keysAgg.push_back(key);
+                scaleAgg.push_back(scaleProj[colProj]);
+                precisionAgg.push_back(precisionProj[colProj]);
+                typeAgg.push_back(typeProj[colProj]);
+                widthAgg.push_back(width[colProj]);
+            }
+            break;
 
             default:
             {
@@ -1563,7 +1574,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
 
             if (!udafFuncCol)
             {
-                throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                throw logic_error("(3)prep1PhaseAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
             }
 
             functionVec[i]->fAuxColumnIndex = lastCol++;
@@ -1851,7 +1862,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
 
                 if (it == jobInfo.projectionCols.end())
                 {
-                    throw logic_error("prep1PhaseDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    throw logic_error("(1)prep1PhaseDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
                 }
             }
             else
@@ -2046,7 +2057,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
 
                     if (!udafFuncCol)
                     {
-                        throw logic_error("prep1PhaseDistinctAggregate A UDAF function is called but there's no RowUDAFFunctionCol");
+                        throw logic_error("(2)prep1PhaseDistinctAggregate A UDAF function is called but there's no RowUDAFFunctionCol");
                     }
 
                     // Return column
@@ -2067,6 +2078,18 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                     funct->fAuxColumnIndex = colAgg++;
                     break;
                 }
+
+                case ROWAGG_MULTI_PARM:
+                {
+                    oidsAgg.push_back(oidsProj[colProj]);
+                    keysAgg.push_back(aggKey);
+                    scaleAgg.push_back(scaleProj[colProj]);
+                    precisionAgg.push_back(precisionProj[colProj]);
+                    typeAgg.push_back(typeProj[colProj]);
+                    widthAgg.push_back(widthProj[colProj]);
+                    ++colAgg;
+                }
+                break;
 
                 default:
                 {
@@ -2114,7 +2137,8 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
             groupByNoDist.push_back(groupby);
             aggFuncMap.insert(make_pair(boost::make_tuple(keysAgg[i], 0, pUDAFFunc), i));
         }
-
+        
+        projColsUDAFIndex = 0;
         // locate the return column position in aggregated rowgroup
         for (uint64_t i = 0; i < returnedColVec.size(); i++)
         {
@@ -2123,6 +2147,14 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
             RowAggFunctionType aggOp = functionIdMap(returnedColVec[i].second);
             RowAggFunctionType stats = statsFuncIdMap(returnedColVec[i].second);
             int colAgg = -1;
+
+            if (aggOp == ROWAGG_UDAF)
+            {
+                UDAFColumn* udafc = dynamic_cast<UDAFColumn*>(jobInfo.projectionCols[i].get());
+
+                if (udafc)
+                    pUDAFFunc = udafc->getContext().getFunction();
+            }
 
             if  (find(jobInfo.distinctColVec.begin(), jobInfo.distinctColVec.end(), retKey) !=
                     jobInfo.distinctColVec.end() )
@@ -2435,11 +2467,37 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                                                new RowAggFunctionCol(
                                                    ROWAGG_DUP_FUNCT, ROWAGG_FUNCT_UNDEFINE, -1, i, dupGroupbyIndex)));
             }
-
-            // update the aggregate function vector
             else
             {
-                SP_ROWAGG_FUNC_t funct(new RowAggFunctionCol(aggOp, stats, colAgg, i));
+                // update the aggregate function vector
+                SP_ROWAGG_FUNC_t funct;
+                if (aggOp == ROWAGG_UDAF)
+                {
+                    std::vector<SRCP>::iterator it = jobInfo.projectionCols.begin() + projColsUDAFIndex;
+
+                    for (; it != jobInfo.projectionCols.end(); it++)
+                    {
+                        UDAFColumn* udafc = dynamic_cast<UDAFColumn*>((*it).get());
+                        projColsUDAFIndex++;
+
+                        if (udafc)
+                        {
+                            pUDAFFunc =  udafc->getContext().getFunction();
+                            // Create a RowAggFunctionCol (UDAF subtype) with the context.
+                            funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colAgg, i));
+                            break;
+                        }
+                    }
+
+                    if (it == jobInfo.projectionCols.end())
+                    {
+                        throw logic_error("(3)prep1PhaseDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    }
+                }
+                else
+                {
+                    funct.reset(new RowAggFunctionCol(aggOp, stats, colAgg, i));
+                }
 
                 if (aggOp == ROWAGG_COUNT_NO_OP)
                     funct->fAuxColumnIndex = colAgg;
@@ -2552,7 +2610,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
 
                 if (!udafFuncCol)
                 {
-                    throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                    throw logic_error("(4)prep1PhaseDistinctAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                 }
 
                 functionVec2[i]->fAuxColumnIndex = lastCol++;
@@ -3039,12 +3097,11 @@ void TupleAggregateStep::prep2PhasesAggregate(
                         funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colProj, colAggPm));
                         break;
                     }
-
                 }
 
                 if (it == jobInfo.projectionCols.end())
                 {
-                    throw logic_error("prep2PhasesAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    throw logic_error("(1)prep2PhasesAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
                 }
             }
             else
@@ -3243,7 +3300,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
 
                     if (!udafFuncCol)
                     {
-                        throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                        throw logic_error("(2)prep2PhasesAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                     }
 
                     oidsAggPm.push_back(oidsProj[colProj]);
@@ -3302,6 +3359,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
         map<uint32_t, SP_ROWAGG_FUNC_t> avgFuncMap;
         AGG_MAP aggDupFuncMap;
 
+        projColsUDAFIndex = 0;
         // copy over the groupby vector
         // update the outputColumnIndex if returned
         for (uint64_t i = 0; i < groupByPm.size(); i++)
@@ -3478,16 +3536,32 @@ void TupleAggregateStep::prep2PhasesAggregate(
                     functionVecUm.push_back(SP_ROWAGG_FUNC_t(new RowAggFunctionCol(
                                                 ROWAGG_DUP_FUNCT, ROWAGG_FUNCT_UNDEFINE, -1, i, dupGroupbyIndex)));
             }
-
-            // update the aggregate function vector
             else
             {
+                // update the aggregate function vector
                 SP_ROWAGG_FUNC_t funct;
-
                 if (aggOp == ROWAGG_UDAF)
                 {
-                    UDAFColumn* udafc = dynamic_cast<UDAFColumn*>(jobInfo.projectionCols[i].get());
-                    funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colPm, i-multiParms));
+                    std::vector<SRCP>::iterator it = jobInfo.projectionCols.begin() + projColsUDAFIndex;
+
+                    for (; it != jobInfo.projectionCols.end(); it++)
+                    {
+                        UDAFColumn* udafc = dynamic_cast<UDAFColumn*>((*it).get());
+                        projColsUDAFIndex++;
+
+                        if (udafc)
+                        {
+                            pUDAFFunc =  udafc->getContext().getFunction();
+                            // Create a RowAggFunctionCol (UDAF subtype) with the context.
+                            funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colPm, i-multiParms));
+                            break;
+                        }
+                    }
+
+                    if (it == jobInfo.projectionCols.end())
+                    {
+                        throw logic_error("(3)prep2PhasesAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    }
                 }
                 else
                 {
@@ -3571,7 +3645,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
 
                 if (!udafFuncCol)
                 {
-                    throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                    throw logic_error("(4)prep2PhasesAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                 }
 
                 functionVecUm[i]->fAuxColumnIndex = lastCol++;
@@ -3883,7 +3957,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
                 if (it == jobInfo.projectionCols.end())
                 {
-                    throw logic_error("prep2PhasesDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    throw logic_error("(1)prep2PhasesDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
                 }
             }
             else
@@ -4077,7 +4151,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
                     if (!udafFuncCol)
                     {
-                        throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                        throw logic_error("(2)prep2PhasesDistinctAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                     }
 
                     // Return column
@@ -4489,17 +4563,32 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                     functionVecUm.push_back(SP_ROWAGG_FUNC_t(new RowAggFunctionCol(
                                                 ROWAGG_DUP_FUNCT, ROWAGG_FUNCT_UNDEFINE, -1, i, dupGroupbyIndex)));
             }
-
-            // update the aggregate function vector
             else
             {
+                // update the aggregate function vector
                 SP_ROWAGG_FUNC_t funct;
-
                 if (aggOp == ROWAGG_UDAF)
                 {
-                    UDAFColumn* udafc = dynamic_cast<UDAFColumn*>(jobInfo.projectionCols[i].get());
-                    pUDAFFunc = udafc->getContext().getFunction();
-                    funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colUm, i-multiParms));
+                    std::vector<SRCP>::iterator it = jobInfo.projectionCols.begin() + projColsUDAFIndex;
+
+                    for (; it != jobInfo.projectionCols.end(); it++)
+                    {
+                        UDAFColumn* udafc = dynamic_cast<UDAFColumn*>((*it).get());
+                        projColsUDAFIndex++;
+
+                        if (udafc)
+                        {
+                            pUDAFFunc =  udafc->getContext().getFunction();
+                            // Create a RowAggFunctionCol (UDAF subtype) with the context.
+                            funct.reset(new RowUDAFFunctionCol(udafc->getContext(), colUm, i-multiParms));
+                            break;
+                        }
+                    }
+
+                    if (it == jobInfo.projectionCols.end())
+                    {
+                        throw logic_error("(3)prep2PhasesDistinctAggregate: A UDAF function is called but there's no/not enough UDAFColumn/-s");
+                    }
                 }
                 else
                 {
@@ -4617,7 +4706,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
                 if (!udafFuncCol)
                 {
-                    throw logic_error("(9)A UDAF function is called but there's no RowUDAFFunctionCol");
+                    throw logic_error("(4)prep2PhasesDistinctAggregate: A UDAF function is called but there's no RowUDAFFunctionCol");
                 }
 
                 functionVecUm[i]->fAuxColumnIndex = lastCol++;

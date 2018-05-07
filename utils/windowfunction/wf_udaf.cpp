@@ -52,6 +52,7 @@ using namespace joblist;
 
 namespace windowfunction
 {
+
 template<typename T>
 boost::shared_ptr<WindowFunctionType> WF_udaf<T>::makeFunction(int id, const string& name, int ct, mcsv1sdk::mcsv1Context& context)
 {
@@ -142,7 +143,7 @@ template<typename T>
 void WF_udaf<T>::resetData()
 {
     getContext().getFunction()->reset(&getContext());
-    fSet.clear();
+    fDistinctSet.clear();
     WindowFunctionType::resetData();
 }
 
@@ -193,11 +194,11 @@ bool WF_udaf<T>::dropValues(int64_t b, int64_t e)
         // Turn on NULL flags
         uint32_t flags[getContext().getParameterCount()];
 
-        for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
+        for (uint32_t k = 0; k < getContext().getParameterCount(); ++k)
         {
-            uint64_t colIn = fFieldIndex[i+1];
-            mcsv1sdk::ColumnDatum& datum = valsIn[i];
-            flags[i] = 0;
+            uint64_t colIn = fFieldIndex[k+1];
+            mcsv1sdk::ColumnDatum& datum = valsIn[k];
+            flags[k] = 0;
             if (fRow.isNullValue(colIn) == true)
             {
                 if (!bRespectNulls)
@@ -206,20 +207,24 @@ bool WF_udaf<T>::dropValues(int64_t b, int64_t e)
                     break;
                 }
 
-                flags[i] |= mcsv1sdk::PARAM_IS_NULL;
+                flags[k] |= mcsv1sdk::PARAM_IS_NULL;
             }
 
             T valIn;
             getValue(colIn, valIn, &datum.dataType);
 
             // Check for distinct, if turned on.
-            if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
+            // Currently, distinct only works for param 1
+            if (k == 0)
             {
-                continue;
-            }
+                if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                {
+                    continue;
+                }
 
-            if (fDistinct)
-                fSet.insert(valIn);
+                if (fDistinct)
+                    fDistinctSet.insert(valIn);
+            }
 
             datum.columnData = valIn;
         }
@@ -487,13 +492,13 @@ void WF_udaf<T>::operator()(int64_t b, int64_t e, int64_t c)
 
             // NULL flags
             uint32_t flags[getContext().getParameterCount()];
-            for (uint32_t i = 0; i < getContext().getParameterCount(); ++i)
+            for (uint32_t k = 0; k < getContext().getParameterCount(); ++k)
             {
-                uint64_t colIn = fFieldIndex[i+1];
-                mcsv1sdk::ColumnDatum& datum = valsIn[i];
+                uint64_t colIn = fFieldIndex[k+1];
+                mcsv1sdk::ColumnDatum& datum = valsIn[k];
 
                 // Turn on Null flags or skip based on respect nulls
-                flags[i] = 0;
+                flags[k] = 0;
                 if (fRow.isNullValue(colIn) == true)
                 {
                     if (!bRespectNulls)
@@ -502,29 +507,144 @@ void WF_udaf<T>::operator()(int64_t b, int64_t e, int64_t c)
                         break;
                     }
 
-                    flags[i] |= mcsv1sdk::PARAM_IS_NULL;
+                    flags[k] |= mcsv1sdk::PARAM_IS_NULL;
                 }
 
-                T valIn;
-                getValue(colIn, valIn, &datum.dataType);
+                // MCOL-1201 Multi-Paramter calls
+                switch (datum.dataType)
+                {
+                    case CalpontSystemCatalog::TINYINT:
+                    case CalpontSystemCatalog::SMALLINT:
+                    case CalpontSystemCatalog::MEDINT:
+                    case CalpontSystemCatalog::INT:
+                    case CalpontSystemCatalog::BIGINT:
+                    case CalpontSystemCatalog::DECIMAL:
+                    {
+                        int64_t valIn;
+                        getValue(colIn, valIn);
+                        // Check for distinct, if turned on.
+                        // Currently, distinct only works on the first parameter.
+                        if (k == 0)
+                        {
+                            if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                            {
+                                continue;
+                            }
 
-                // Check for distinct, if turned on.
-                if ((fDistinct) || (fSet.find(valIn) != fSet.end()))
+                            if (fDistinct)
+                                fDistinctSet.insert(valIn);
+                        }
+                        datum.columnData = valIn;
+                        break;
+                    }
+
+                    case CalpontSystemCatalog::UTINYINT:
+                    case CalpontSystemCatalog::USMALLINT:
+                    case CalpontSystemCatalog::UMEDINT:
+                    case CalpontSystemCatalog::UINT:
+                    case CalpontSystemCatalog::UBIGINT:
+                    case CalpontSystemCatalog::UDECIMAL:
+                    {
+                        uint64_t valIn;
+                        getValue(colIn, valIn);
+                        // Check for distinct, if turned on.
+                        // Currently, distinct only works on the first parameter.
+                        if (k == 0)
+                        {
+                            if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                            {
+                                continue;
+                            }
+
+                            if (fDistinct)
+                                fDistinctSet.insert(valIn);
+                        }
+                        datum.columnData = valIn;
+                        break;
+                    }
+
+                    case CalpontSystemCatalog::DOUBLE:
+                    case CalpontSystemCatalog::UDOUBLE:
+                    {
+                        double valIn;
+                        getValue(colIn, valIn);
+                        // Check for distinct, if turned on.
+                        // Currently, distinct only works on the first parameter.
+                        if (k == 0)
+                        {
+                            if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                            {
+                                continue;
+                            }
+
+                            if (fDistinct)
+                                fDistinctSet.insert(valIn);
+                        }
+                        datum.columnData = valIn;
+                        break;
+                    }
+
+                    case CalpontSystemCatalog::FLOAT:
+                    case CalpontSystemCatalog::UFLOAT:
+                    {
+                        float valIn;
+                        getValue(colIn, valIn);
+                        // Check for distinct, if turned on.
+                        // Currently, distinct only works on the first parameter.
+                        if (k == 0)
+                        {
+                            if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                            {
+                                continue;
+                            }
+
+                            if (fDistinct)
+                                fDistinctSet.insert(valIn);
+                        }
+                        datum.columnData = valIn;
+                        break;
+                    }
+
+                    case CalpontSystemCatalog::CHAR:
+                    case CalpontSystemCatalog::VARCHAR:
+                    case CalpontSystemCatalog::VARBINARY:
+                    case CalpontSystemCatalog::TEXT:
+                    case CalpontSystemCatalog::BLOB:
+                    {
+                        string valIn;
+                        getValue(colIn, valIn);
+                        // Check for distinct, if turned on.
+                        // Currently, distinct only works on the first parameter.
+                        if (k == 0)
+                        {
+                            if ((fDistinct) || (fDistinctSet.find(valIn) != fDistinctSet.end()))
+                            {
+                                continue;
+                            }
+
+                            if (fDistinct)
+                                fDistinctSet.insert(valIn);
+                        }
+                        datum.columnData = valIn;
+                        break;
+                    }
+
+                    default:
+                    {
+                        string errStr = "(" + colType2String[i] + ")";
+                        errStr = IDBErrorInfo::instance()->errorMsg(ERR_WF_INVALID_PARM_TYPE, errStr);
+                        cerr << errStr << endl;
+                        throw IDBExcept(errStr, ERR_WF_INVALID_PARM_TYPE);
+
+                        break;
+                    }
+                }
+                // Skip if any value is NULL and respect nulls is off.
+                if (bHasNull)
                 {
                     continue;
                 }
-
-                if (fDistinct)
-                    fSet.insert(valIn);
-
-                datum.columnData = valIn;
             }
-            // Skip if any value is NULL and respect nulls is off.
-            if (bHasNull)
-            {
-                continue;
-            }
-
             getContext().setDataFlags(flags);
             
             rc = getContext().getFunction()->nextValue(&getContext(), valsIn);

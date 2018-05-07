@@ -198,14 +198,14 @@
             <F N="rowgroup.cpp"/>
         </Folder>
         <Folder
+            Name="Resource Files"
+            Filters="*.ico;*.cur;*.dlg"/>
+        <Folder
             Name="Header Files"
             Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if">
             <F N="rowaggregation.h"/>
             <F N="rowgroup.h"/>
         </Folder>
-        <Folder
-            Name="Resource Files"
-            Filters="*.ico;*.cur;*.dlg"/>
         <Folder
             Name="Bitmaps"
             Filters="*.bmp"/>
