@@ -414,6 +414,13 @@ ReturnedColumn* buildWindowFunctionColumn(Item* item, gp_walk_info& gwi, bool& n
         ct.scale = context.getScale();
         ct.precision = context.getPrecision();
         ac->resultType(ct);
+        // In some cases, the Server will set the decimals in item_sum to
+        // a number that implies not fixed decimal. If we want fixed, we
+        // need to change that here. This especially happens with multi-parameter
+        // UDAF where the first parameter is a string, but we want to return
+        // a fixed decimal double.
+        item_sum->decimals = ct.scale;
+        item->decimals = item_sum->decimals;
     }
 
     // Some functions, such as LEAD/LAG don't have all parameters implemented in the
@@ -426,10 +433,10 @@ ReturnedColumn* buildWindowFunctionColumn(Item* item, gp_walk_info& gwi, bool& n
     {
         case Item_sum::UDF_SUM_FUNC:
         {
-            uint64_t bIgnoreNulls = (ac->getUDAFContext().getRunFlag(mcsv1sdk::UDAF_IGNORE_NULLS));
-            char sIgnoreNulls[18];
-            sprintf(sIgnoreNulls, "%lu", bIgnoreNulls);
-            srcp.reset(new ConstantColumn(sIgnoreNulls, (uint64_t)bIgnoreNulls, ConstantColumn::NUM)); // IGNORE/RESPECT NULLS. 1 => RESPECT
+            uint64_t bRespectNulls = (ac->getUDAFContext().getRunFlag(mcsv1sdk::UDAF_IGNORE_NULLS)) ? 0 : 1;
+            char sRespectNulls[18];
+            sprintf(sRespectNulls, "%lu", bRespectNulls);
+            srcp.reset(new ConstantColumn(sRespectNulls, (uint64_t)bRespectNulls, ConstantColumn::NUM)); // IGNORE/RESPECT NULLS. 1 => RESPECT
             funcParms.push_back(srcp);
             break;
         }
@@ -887,17 +894,9 @@ ReturnedColumn* buildWindowFunctionColumn(Item* item, gp_walk_info& gwi, bool& n
         return NULL;
     }
 
-    ac->resultType(colType_MysqlToIDB(item_sum));
-
-    if (UNLIKELY(item_sum->sum_func() == Item_sum::UDF_SUM_FUNC))
+    if (item_sum->sum_func() != Item_sum::UDF_SUM_FUNC)
     {
-        // For UDAnF, return type (ct) is set in UDAnF init() called above
-        ac->resultType(ct);
-    }
-    else
-    {
-        ct = colType_MysqlToIDB(item_sum);
-        ac->resultType(ct);
+        ac->resultType(colType_MysqlToIDB(item_sum));
         // bug5736. Make the result type double for some window functions when
         // infinidb_double_for_decimal_math is set.
         ac->adjustResultType();

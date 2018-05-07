@@ -78,6 +78,10 @@ mcsv1_UDAF::ReturnCode regr_avgx::nextValue(mcsv1Context* context, ColumnDatum* 
     struct  regr_avgx_data* data = (struct regr_avgx_data*)context->getUserData()->data;
     DATATYPE val = 0.0;
 
+    if (context->isParamNull(0) || context->isParamNull(1))
+    {
+        return mcsv1_UDAF::SUCCESS; // Ought not happen when UDAF_IGNORE_NULLS is on.
+    }
     if (valIn_x.empty() || valIn_y.empty())
     {
         return mcsv1_UDAF::SUCCESS; // Ought not happen when UDAF_IGNORE_NULLS is on.
@@ -174,7 +178,14 @@ mcsv1_UDAF::ReturnCode regr_avgx::evaluate(mcsv1Context* context, static_any::an
 {
     struct regr_avgx_data* data = (struct regr_avgx_data*)context->getUserData()->data;
 
-    valOut = data->sum / (double)data->cnt;
+    if (data->cnt == 0)
+    {
+        valOut = 0;
+    }
+    else
+    {
+        valOut = data->sum / (double)data->cnt;
+    }
     return mcsv1_UDAF::SUCCESS;
 }
 
