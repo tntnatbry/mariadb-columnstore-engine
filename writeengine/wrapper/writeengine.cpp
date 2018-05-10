@@ -2027,7 +2027,7 @@ int WriteEngineWrapper::insertColumnRecsBinary(const TxnID& txnid,
         for (size_t k = 0; k < colStructList.size(); k++)
         {
             // Skip the selected column
-            if (k == colId)
+            if (k == (size_t)colId)
                 continue;
 
             Column expandCol;

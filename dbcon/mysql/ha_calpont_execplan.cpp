@@ -3542,7 +3542,8 @@ ReturnedColumn* buildFunctionColumn(Item_func* ifp, gp_walk_info& gwi, bool& non
         if (ifp->field_type() == MYSQL_TYPE_DATETIME ||
                 ifp->field_type() == MYSQL_TYPE_DATETIME2 ||
                 ifp->field_type() == MYSQL_TYPE_TIMESTAMP ||
-                ifp->field_type() == MYSQL_TYPE_TIMESTAMP2)
+                ifp->field_type() == MYSQL_TYPE_TIMESTAMP2 ||
+                funcName == "add_time")
         {
             CalpontSystemCatalog::ColType ct;
             ct.colDataType = CalpontSystemCatalog::DATETIME;
@@ -4541,19 +4542,6 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
                 {
                     gwi.fatalParseError = true;
                     gwi.parseErrorText = udafc->getContext().getErrorMessage();
-                    if (ac)
-                        delete ac;
-                    return NULL;
-                }
-
-                // UDAF_OVER_REQUIRED means that this function is for Window
-                // Function only. Reject it here in aggregate land.
-                if (udafc->getContext().getRunFlag(UDAF_OVER_REQUIRED))
-                {
-                    gwi.fatalParseError = true;
-                    gwi.parseErrorText =
-                        logging::IDBErrorInfo::instance()->errorMsg(logging::ERR_WINDOW_FUNC_ONLY,
-                                context.getName());
                     if (ac)
                         delete ac;
                     return NULL;
