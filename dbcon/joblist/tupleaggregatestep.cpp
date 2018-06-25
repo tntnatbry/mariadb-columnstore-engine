@@ -4445,237 +4445,220 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                 {
                     colUm = it->second;
                 }
-                else
-                {
-                    ostringstream emsg;
-                    emsg << "'" << jobInfo.keyInfo->tupleKeyToName[retKey] << "' isn't in tuple.";
-                    cerr << "prep2PhasesDistinctAggregate: distinct " << emsg.str()
-                         << " oid=" << (int) jobInfo.keyInfo->tupleKeyVec[retKey].fId
-                         << ", alias=" << jobInfo.keyInfo->tupleKeyVec[retKey].fTable;
-
-                    if (jobInfo.keyInfo->tupleKeyVec[retKey].fView.length() > 0)
-                        cerr << ", view=" << jobInfo.keyInfo->tupleKeyVec[retKey].fView;
-
-                    cerr << endl;
-                    throw QueryDataExcept(emsg.str(), aggregateFuncErr);
-                }
             }
 
-            switch (aggOp)
+            if (colUm > -1) // Means we found a DISTINCT and have a column number
             {
-                case ROWAGG_DISTINCT_AVG:
-
-                //avgFuncMap.insert(make_pair(key, funct));
-                case ROWAGG_DISTINCT_SUM:
+                switch (aggOp)
                 {
-                    if (typeAggUm[colUm] == CalpontSystemCatalog::CHAR ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::VARCHAR ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::BLOB ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::TEXT ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::DATE ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::DATETIME ||
-                            typeAggUm[colUm] == CalpontSystemCatalog::TIME)
+                    case ROWAGG_DISTINCT_AVG:
+
+                    //avgFuncMap.insert(make_pair(key, funct));
+                    case ROWAGG_DISTINCT_SUM:
                     {
-                        Message::Args args;
-                        args.add("sum/average");
-                        args.add(colTypeIdString(typeAggUm[colUm]));
-                        string emsg = IDBErrorInfo::instance()->
-                                      errorMsg(ERR_AGGREGATE_TYPE_NOT_SUPPORT, args);
-                        cerr << "prep2PhasesDistinctAggregate: " << emsg << endl;
-                        throw IDBExcept(emsg, ERR_AGGREGATE_TYPE_NOT_SUPPORT);
+                        if (typeAggUm[colUm] == CalpontSystemCatalog::CHAR ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::VARCHAR ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::BLOB ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::TEXT ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::DATE ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::DATETIME ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::TIME)
+                        {
+                            Message::Args args;
+                            args.add("sum/average");
+                            args.add(colTypeIdString(typeAggUm[colUm]));
+                            string emsg = IDBErrorInfo::instance()->
+                                          errorMsg(ERR_AGGREGATE_TYPE_NOT_SUPPORT, args);
+                            cerr << "prep2PhasesDistinctAggregate: " << emsg << endl;
+                            throw IDBExcept(emsg, ERR_AGGREGATE_TYPE_NOT_SUPPORT);
+                        }
+
+                        oidsAggDist.push_back(oidsAggUm[colUm]);
+                        keysAggDist.push_back(retKey);
+
+                        if (typeAggUm[colUm] != CalpontSystemCatalog::DOUBLE &&
+                                typeAggUm[colUm] != CalpontSystemCatalog::FLOAT)
+                        {
+                            if (isUnsigned(typeAggUm[colUm]))
+                            {
+                                typeAggDist.push_back(CalpontSystemCatalog::UBIGINT);
+                                precisionAggDist.push_back(20);
+                            }
+                            else
+                            {
+                                typeAggDist.push_back(CalpontSystemCatalog::BIGINT);
+                                precisionAggDist.push_back(19);
+                            }
+
+                            uint32_t scale = scaleAggUm[colUm];
+
+                            // for int average, FE expects a decimal
+                            if (aggOp == ROWAGG_DISTINCT_AVG)
+                                scale = jobInfo.scaleOfAvg[retKey]; // scale += 4;
+
+                            scaleAggDist.push_back(scale);
+                            widthAggDist.push_back(bigIntWidth);
+                        }
+                        else
+                        {
+                            typeAggDist.push_back(typeAggUm[colUm]);
+                            scaleAggDist.push_back(scaleAggUm[colUm]);
+                            precisionAggDist.push_back(precisionAggUm[colUm]);
+                            widthAggDist.push_back(widthAggUm[colUm]);
+                        }
                     }
+                        // PM: put the count column for avg next to the sum
+                        // let fall through to add a count column for average function
+                        //if (aggOp != ROWAGG_DISTINCT_AVG)
+                    break;
 
-                    oidsAggDist.push_back(oidsAggUm[colUm]);
-                    keysAggDist.push_back(retKey);
-
-                    if (typeAggUm[colUm] != CalpontSystemCatalog::DOUBLE &&
-                            typeAggUm[colUm] != CalpontSystemCatalog::FLOAT)
+                    case ROWAGG_COUNT_DISTINCT_COL_NAME:
                     {
+                        oidsAggDist.push_back(oidsAggUm[colUm]);
+                        keysAggDist.push_back(retKey);
+                        scaleAggDist.push_back(0);
+                        // work around count() in select subquery
+                        precisionAggDist.push_back(9999);
+
                         if (isUnsigned(typeAggUm[colUm]))
                         {
                             typeAggDist.push_back(CalpontSystemCatalog::UBIGINT);
-                            precisionAggDist.push_back(20);
                         }
                         else
                         {
                             typeAggDist.push_back(CalpontSystemCatalog::BIGINT);
-                            precisionAggDist.push_back(19);
                         }
 
-                        uint32_t scale = scaleAggUm[colUm];
-
-                        // for int average, FE expects a decimal
-                        if (aggOp == ROWAGG_DISTINCT_AVG)
-                            scale = jobInfo.scaleOfAvg[retKey]; // scale += 4;
-
-                        scaleAggDist.push_back(scale);
                         widthAggDist.push_back(bigIntWidth);
                     }
-                    else
-                    {
-                        typeAggDist.push_back(typeAggUm[colUm]);
-                        scaleAggDist.push_back(scaleAggUm[colUm]);
-                        precisionAggDist.push_back(precisionAggUm[colUm]);
-                        widthAggDist.push_back(widthAggUm[colUm]);
-                    }
-                }
-                    // PM: put the count column for avg next to the sum
-                    // let fall through to add a count column for average function
-                    //if (aggOp != ROWAGG_DISTINCT_AVG)
-                break;
+                    break;
 
-                case ROWAGG_COUNT_DISTINCT_COL_NAME:
+                    default:
+                        // cound happen if agg and agg distinct use same column.
+                        colUm = -1;
+                        break;
+                } // switch
+            }
+            // For non distinct aggregates
+            if (colUm == -1)
+            {
+                AGG_MAP::iterator it = aggFuncMap.find(boost::make_tuple(retKey, aggOp, pUDAFFunc));
+
+                if (it != aggFuncMap.end())
                 {
+                    colUm = it->second;
                     oidsAggDist.push_back(oidsAggUm[colUm]);
-                    keysAggDist.push_back(retKey);
-                    scaleAggDist.push_back(0);
-                    // work around count() in select subquery
-                    precisionAggDist.push_back(9999);
-
-                    if (isUnsigned(typeAggUm[colUm]))
-                    {
-                        typeAggDist.push_back(CalpontSystemCatalog::UBIGINT);
-                    }
-                    else
-                    {
-                        typeAggDist.push_back(CalpontSystemCatalog::BIGINT);
-                    }
-
-                    widthAggDist.push_back(bigIntWidth);
+                    keysAggDist.push_back(keysAggUm[colUm]);
+                    scaleAggDist.push_back(scaleAggUm[colUm]);
+                    precisionAggDist.push_back(precisionAggUm[colUm]);
+                    typeAggDist.push_back(typeAggUm[colUm]);
+                    widthAggDist.push_back(widthAggUm[colUm]);
+                    colUm -= multiParms;
                 }
-                break;
 
-                case ROWAGG_MIN:
-                case ROWAGG_MAX:
-                case ROWAGG_SUM:
-                case ROWAGG_AVG:
-                case ROWAGG_COUNT_ASTERISK:
-                case ROWAGG_COUNT_COL_NAME:
-                case ROWAGG_STATS:
-                case ROWAGG_BIT_AND:
-                case ROWAGG_BIT_OR:
-                case ROWAGG_BIT_XOR:
-                case ROWAGG_CONSTANT:
-                default:
+                // not a direct hit -- a returned column is not already in the RG from PMs
+                else
                 {
-                    AGG_MAP::iterator it = aggFuncMap.find(boost::make_tuple(retKey, aggOp, pUDAFFunc));
+                    bool returnColMissing = true;
 
-                    if (it != aggFuncMap.end())
+                    // check if a SUM or COUNT covered by AVG
+                    if (aggOp == ROWAGG_SUM || aggOp == ROWAGG_COUNT_COL_NAME)
                     {
-                        colUm = it->second;
-                        oidsAggDist.push_back(oidsAggUm[colUm]);
-                        keysAggDist.push_back(keysAggUm[colUm]);
-                        scaleAggDist.push_back(scaleAggUm[colUm]);
-                        precisionAggDist.push_back(precisionAggUm[colUm]);
-                        typeAggDist.push_back(typeAggUm[colUm]);
-                        widthAggDist.push_back(widthAggUm[colUm]);
-                        colUm -= multiParms;
-                    }
+                        it = aggFuncMap.find(boost::make_tuple(returnedColVec[i].first, ROWAGG_AVG, pUDAFFunc));
 
-                    // not a direct hit -- a returned column is not already in the RG from PMs
-                    else
-                    {
-                        bool returnColMissing = true;
-
-                        // check if a SUM or COUNT covered by AVG
-                        if (aggOp == ROWAGG_SUM || aggOp == ROWAGG_COUNT_COL_NAME)
+                        if (it != aggFuncMap.end())
                         {
-                            it = aggFuncMap.find(boost::make_tuple(returnedColVec[i].first, ROWAGG_AVG, pUDAFFunc));
+                            // false alarm
+                            returnColMissing = false;
 
-                            if (it != aggFuncMap.end())
+                            colUm = it->second;
+
+                            if (aggOp == ROWAGG_SUM)
                             {
-                                // false alarm
-                                returnColMissing = false;
+                                oidsAggDist.push_back(oidsAggUm[colUm]);
+                                keysAggDist.push_back(retKey);
+                                scaleAggDist.push_back(scaleAggUm[colUm] >> 8);
+                                precisionAggDist.push_back(precisionAggUm[colUm]);
+                                typeAggDist.push_back(typeAggUm[colUm]);
+                                widthAggDist.push_back(widthAggUm[colUm]);
+                            }
+                            else
+                            {
+                                // leave the count() to avg
+                                aggOp = ROWAGG_COUNT_NO_OP;
 
-                                colUm = it->second;
-
-                                if (aggOp == ROWAGG_SUM)
+                                oidsAggDist.push_back(oidsAggUm[colUm]);
+                                keysAggDist.push_back(retKey);
+                                scaleAggDist.push_back(0);
+                                if (isUnsigned(typeAggUm[colUm]))
                                 {
-                                    oidsAggDist.push_back(oidsAggUm[colUm]);
-                                    keysAggDist.push_back(retKey);
-                                    scaleAggDist.push_back(scaleAggUm[colUm] >> 8);
-                                    precisionAggDist.push_back(precisionAggUm[colUm]);
-                                    typeAggDist.push_back(typeAggUm[colUm]);
-                                    widthAggDist.push_back(widthAggUm[colUm]);
+                                    precisionAggDist.push_back(20);
+                                    typeAggDist.push_back(CalpontSystemCatalog::UBIGINT);
                                 }
                                 else
                                 {
-                                    // leave the count() to avg
-                                    aggOp = ROWAGG_COUNT_NO_OP;
-
-                                    oidsAggDist.push_back(oidsAggUm[colUm]);
-                                    keysAggDist.push_back(retKey);
-                                    scaleAggDist.push_back(0);
-                                    if (isUnsigned(typeAggUm[colUm]))
-                                    {
-                                        precisionAggDist.push_back(20);
-                                        typeAggDist.push_back(CalpontSystemCatalog::UBIGINT);
-                                    }
-                                    else
-                                    {
-                                        precisionAggDist.push_back(19);
-                                        typeAggDist.push_back(CalpontSystemCatalog::BIGINT);
-                                    }
-                                    widthAggDist.push_back(bigIntWidth);
+                                    precisionAggDist.push_back(19);
+                                    typeAggDist.push_back(CalpontSystemCatalog::BIGINT);
                                 }
+                                widthAggDist.push_back(bigIntWidth);
                             }
                         }
-                        else if (find(jobInfo.expressionVec.begin(), jobInfo.expressionVec.end(),
-                                      retKey) != jobInfo.expressionVec.end())
-                        {
-                            // a function on aggregation
-                            TupleInfo ti = getTupleInfo(retKey, jobInfo);
-                            oidsAggDist.push_back(ti.oid);
-                            keysAggDist.push_back(retKey);
-                            scaleAggDist.push_back(ti.scale);
-                            precisionAggDist.push_back(ti.precision);
-                            typeAggDist.push_back(ti.dtype);
-                            widthAggDist.push_back(ti.width);
+                    }
+                    else if (find(jobInfo.expressionVec.begin(), jobInfo.expressionVec.end(),
+                                  retKey) != jobInfo.expressionVec.end())
+                    {
+                        // a function on aggregation
+                        TupleInfo ti = getTupleInfo(retKey, jobInfo);
+                        oidsAggDist.push_back(ti.oid);
+                        keysAggDist.push_back(retKey);
+                        scaleAggDist.push_back(ti.scale);
+                        precisionAggDist.push_back(ti.precision);
+                        typeAggDist.push_back(ti.dtype);
+                        widthAggDist.push_back(ti.width);
 
-                            returnColMissing = false;
-                        }
-                        else if (jobInfo.windowSet.find(retKey) != jobInfo.windowSet.end())
-                        {
-                            // a window function
-                            TupleInfo ti = getTupleInfo(retKey, jobInfo);
-                            oidsAggDist.push_back(ti.oid);
-                            keysAggDist.push_back(retKey);
-                            scaleAggDist.push_back(ti.scale);
-                            precisionAggDist.push_back(ti.precision);
-                            typeAggDist.push_back(ti.dtype);
-                            widthAggDist.push_back(ti.width);
+                        returnColMissing = false;
+                    }
+                    else if (jobInfo.windowSet.find(retKey) != jobInfo.windowSet.end())
+                    {
+                        // a window function
+                        TupleInfo ti = getTupleInfo(retKey, jobInfo);
+                        oidsAggDist.push_back(ti.oid);
+                        keysAggDist.push_back(retKey);
+                        scaleAggDist.push_back(ti.scale);
+                        precisionAggDist.push_back(ti.precision);
+                        typeAggDist.push_back(ti.dtype);
+                        widthAggDist.push_back(ti.width);
 
-                            returnColMissing = false;
-                        }
-                        else if (aggOp == ROWAGG_CONSTANT)
-                        {
-                            TupleInfo ti = getTupleInfo(retKey, jobInfo);
-                            oidsAggDist.push_back(ti.oid);
-                            keysAggDist.push_back(retKey);
-                            scaleAggDist.push_back(ti.scale);
-                            precisionAggDist.push_back(ti.precision);
-                            typeAggDist.push_back(ti.dtype);
-                            widthAggDist.push_back(ti.width);
+                        returnColMissing = false;
+                    }
+                    else if (aggOp == ROWAGG_CONSTANT)
+                    {
+                        TupleInfo ti = getTupleInfo(retKey, jobInfo);
+                        oidsAggDist.push_back(ti.oid);
+                        keysAggDist.push_back(retKey);
+                        scaleAggDist.push_back(ti.scale);
+                        precisionAggDist.push_back(ti.precision);
+                        typeAggDist.push_back(ti.dtype);
+                        widthAggDist.push_back(ti.width);
 
-                            returnColMissing = false;
-                        }
+                        returnColMissing = false;
+                    }
 
-                        if (returnColMissing)
-                        {
-                            Message::Args args;
-                            args.add(keyName(outIdx, retKey, jobInfo));
-                            string emsg = IDBErrorInfo::instance()->
-                                          errorMsg(ERR_NOT_GROUPBY_EXPRESSION, args);
-                            cerr << "prep2PhasesDistinctAggregate: " << emsg << " oid="
-                                 << (int) jobInfo.keyInfo->tupleKeyVec[retKey].fId << ", alias="
-                                 << jobInfo.keyInfo->tupleKeyVec[retKey].fTable << ", view="
-                                 << jobInfo.keyInfo->tupleKeyVec[retKey].fView << ", function="
-                                 << (int) aggOp << endl;
-                            throw IDBExcept(emsg, ERR_NOT_GROUPBY_EXPRESSION);
-                        }
-                    } //else
-                } // switch
-            }
+                    if (returnColMissing)
+                    {
+                        Message::Args args;
+                        args.add(keyName(outIdx, retKey, jobInfo));
+                        string emsg = IDBErrorInfo::instance()->
+                                      errorMsg(ERR_NOT_GROUPBY_EXPRESSION, args);
+                        cerr << "prep2PhasesDistinctAggregate: " << emsg << " oid="
+                             << (int) jobInfo.keyInfo->tupleKeyVec[retKey].fId << ", alias="
+                             << jobInfo.keyInfo->tupleKeyVec[retKey].fTable << ", view="
+                             << jobInfo.keyInfo->tupleKeyVec[retKey].fView << ", function="
+                             << (int) aggOp << endl;
+                        throw IDBExcept(emsg, ERR_NOT_GROUPBY_EXPRESSION);
+                    }
+                } //else not a direct hit
+            } // else not a DISTINCT
 
             // update groupby vector if the groupby column is a returned column
             if (returnedColVec[i].second == 0)
