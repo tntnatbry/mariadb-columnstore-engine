@@ -192,6 +192,10 @@ mcsv1_UDAF::ReturnCode regr_avgx::dropValue(mcsv1Context* context, ColumnDatum* 
     struct regr_avgx_data* data = (struct regr_avgx_data*)context->getUserData()->data;
     DATATYPE val = 0.0;
 
+    if (context->isParamNull(0) || context->isParamNull(1))
+    {
+        return mcsv1_UDAF::SUCCESS; // Ought not happen when UDAF_IGNORE_NULLS is on.
+    }
     if (valIn_x.empty() || valIn_y.empty())
     {
         return mcsv1_UDAF::SUCCESS; // Ought not happen when UDAF_IGNORE_NULLS is on.

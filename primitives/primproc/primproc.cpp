@@ -329,7 +329,7 @@ int main(int argc, char* argv[])
 
     mlp = new primitiveprocessor::Logger();
 
-    int err = setupResources();
+//    int err = setupResources();
     string errMsg;
 
     switch (err)

@@ -556,7 +556,7 @@ extern "C"
     {
         // TODO test for NULL in x and y
     	struct regr_avgx_data* data = (struct regr_avgx_data*)initid->ptr;
-    	double xval = cvtArgToDouble(args->arg_type[1], args->args[0]);
+    	double xval = cvtArgToDouble(args->arg_type[1], args->args[1]);
         ++data->cnt;
     	data->sumx += xval;
     }
@@ -569,6 +569,86 @@ extern "C"
     {
     	struct regr_avgx_data* data = (struct regr_avgx_data*)initid->ptr;
     	return data->sumx / data->cnt;
+    }
+
+//=======================================================================
+
+    /**
+     * regr_avgy connector stub
+     */
+    struct regr_avgy_data
+    {
+      double	sumy;
+      int64_t   cnt;
+    };
+     
+    #ifdef _MSC_VER
+    __declspec(dllexport)
+    #endif
+    my_bool regr_avgy_init(UDF_INIT* initid, UDF_ARGS* args, char* message)
+    {
+    	struct regr_avgy_data* data;
+    	if (args->arg_count != 2)
+    	{
+    		strcpy(message,"regr_avgy() requires two arguments");
+    		return 1;
+    	}
+
+    	if (!(data = (struct regr_avgy_data*) malloc(sizeof(struct regr_avgy_data))))
+    	{
+    		strmov(message,"Couldn't allocate memory");
+    		return 1;
+    	}
+    	data->sumy	= 0;
+        data->cnt = 0;
+
+    	initid->ptr = (char*)data;
+    	return 0;
+    }
+
+    #ifdef _MSC_VER
+    __declspec(dllexport)
+    #endif
+    void regr_avgy_deinit(UDF_INIT* initid)
+    {
+    	free(initid->ptr);
+    }	
+
+    #ifdef _MSC_VER
+    __declspec(dllexport)
+    #endif
+    void
+    regr_avgy_clear(UDF_INIT* initid, char* is_null __attribute__((unused)),
+                  char* message __attribute__((unused)))
+    {
+    	struct regr_avgy_data* data = (struct regr_avgy_data*)initid->ptr;
+    	data->sumy = 0;
+        data->cnt = 0;
+    }
+
+    #ifdef _MSC_VER
+    __declspec(dllexport)
+    #endif
+    void
+    regr_avgy_add(UDF_INIT* initid, UDF_ARGS* args,
+                char* is_null,
+                char* message __attribute__((unused)))
+    {
+        // TODO test for NULL in x and y
+    	struct regr_avgy_data* data = (struct regr_avgy_data*)initid->ptr;
+    	double yval = cvtArgToDouble(args->arg_type[0], args->args[0]);
+        ++data->cnt;
+    	data->sumy += yval;
+    }
+
+    #ifdef _MSC_VER
+    __declspec(dllexport)
+    #endif
+    long long regr_avgy(UDF_INIT* initid, UDF_ARGS* args __attribute__((unused)),
+    				  char* is_null, char* error __attribute__((unused)))
+    {
+    	struct regr_avgy_data* data = (struct regr_avgy_data*)initid->ptr;
+    	return data->sumy / data->cnt;
     }
 
 //=======================================================================

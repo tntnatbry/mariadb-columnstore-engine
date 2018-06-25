@@ -37,6 +37,7 @@ UDAF_MAP UDAFMap::fm;
 #include "median.h"
 #include "avg_mode.h"
 #include "regr_avgx.h"
+#include "regr_avgy.h"
 #include "avgx.h"
 UDAF_MAP& UDAFMap::getMap()
 {
@@ -55,6 +56,7 @@ UDAF_MAP& UDAFMap::getMap()
     fm["median"] = new median();
     fm["avg_mode"] = new avg_mode();
     fm["regr_avgx"] = new regr_avgx();
+    fm["regr_avgy"] = new regr_avgy();
     fm["avgx"] = new avgx();
 
     return fm;
