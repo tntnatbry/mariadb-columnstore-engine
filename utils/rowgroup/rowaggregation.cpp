@@ -1673,7 +1673,7 @@ void RowAggregation::updateEntry(const Row& rowIn)
 {
     for (uint64_t i = 0; i < fFunctionCols.size(); i++)
     {
-        SP_ROWAGG_FUNC_t pFunctionCol = fFunctionCols[i];
+        RowAggFunctionCol* pFunctionCol = fFunctionCols[i].get();
         int64_t colIn  = pFunctionCol->fInputColumnIndex;
         int64_t colOut = pFunctionCol->fOutputColumnIndex;
 
@@ -2022,7 +2022,7 @@ void RowAggregation::doUDAF(const Row& rowIn, int64_t colIn, int64_t colOut,
             ++funcColsIdx;
             continue;
         }
-        SP_ROWAGG_FUNC_t pFunctionCol = fFunctionCols[funcColsIdx];
+        RowAggFunctionCol* pFunctionCol = fFunctionCols[funcColsIdx].get();
         mcsv1sdk::ColumnDatum& datum = valsIn[i];
         // Turn on NULL flags
         dataFlags[i] = 0;
@@ -2225,7 +2225,7 @@ void RowAggregation::doUDAF(const Row& rowIn, int64_t colIn, int64_t colOut,
         &&  fFunctionCols[funcColsIdx+1]->fAggFunction == ROWAGG_MULTI_PARM)
         {
             ++funcColsIdx;
-            SP_ROWAGG_FUNC_t pFunctionCol = fFunctionCols[funcColsIdx];
+            RowAggFunctionCol* pFunctionCol = fFunctionCols[funcColsIdx].get();
             colIn  = pFunctionCol->fInputColumnIndex;
             colOut = pFunctionCol->fOutputColumnIndex;
         }
