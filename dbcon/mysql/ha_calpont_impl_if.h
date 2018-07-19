@@ -233,9 +233,35 @@ struct cal_connection_info
 		config::Config* cf = config::Config::makeConfig();
 		std::string configVal = cf->getConfig("Installation", "MySQLRep");
 		bool isMysqlRep = (configVal == "y" || configVal == "Y");
+
+		//Log to debug.log
+		LoggingID logid( 24, 0, 0);
+		{
+			logging::Message::Args args1;
+			logging::Message msg(1);
+			std::ostringstream oss;
+			oss << "checkSlave: MysqlRep=" << configVal;
+			args1.add(oss.str());
+			msg.format( args1 );
+			Logger logger(logid.fSubsysID);
+			logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+		}
 		if (!isMysqlRep) return false;
 		configVal = cf->getConfig("SystemConfig", "PrimaryUMModuleName");
 		std::string module = execplan::ClientRotator::getModule();
+
+		//Log to debug.log
+		{
+			logging::Message::Args args1;
+			logging::Message msg(1);
+			std::ostringstream oss;
+			oss << "checkSlave: configVal=" << configVal << "; ClientRotator=" << module;
+			args1.add(oss.str());
+			msg.format( args1 );
+			Logger logger(logid.fSubsysID);
+			logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+		}
+
 		if (boost::iequals(configVal, module))
 			return false;
 		return true;
