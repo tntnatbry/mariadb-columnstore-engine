@@ -44,7 +44,8 @@ struct st_ha_create_information;
 #include "querystats.h"
 #include "sm.h"
 #include "functor.h"
-
+#include "logger.h"
+using namespace logging;
 /** Debug macro */
 #ifdef INFINIDB_DEBUG
 #define IDEBUG(x) {x;}
@@ -255,7 +256,10 @@ struct cal_connection_info
 			logging::Message::Args args1;
 			logging::Message msg(1);
 			std::ostringstream oss;
-			oss << "checkSlave: configVal=" << configVal << "; ClientRotator=" << module;
+			oss << "checkSlave: configVal=" << configVal 
+            << " length: " << configVal.length() << 
+            "; ClientRotator=" << module
+            << " length: " << module.length();
 			args1.add(oss.str());
 			msg.format( args1 );
 			Logger logger(logid.fSubsysID);
