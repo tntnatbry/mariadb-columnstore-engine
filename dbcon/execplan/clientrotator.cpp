@@ -49,6 +49,15 @@ using namespace logging;
 
 #include "clientrotator.h"
 
+//#include "idb_mysql.h"
+
+/** Debug macro */
+#ifdef INFINIDB_DEBUG
+#define IDEBUG(x) {x;}
+#else
+#define IDEBUG(x) {}
+#endif
+
 #define LOG_TO_CERR
 
 namespace execplan
@@ -60,13 +69,49 @@ const uint64_t LOCAL_EXEMGR_PORT = 8601;
 string ClientRotator::getModule()
 {
 	string installDir = startup::StartUp::installDir();
+	
+	//Log to debug.log
+	LoggingID logid( 24, 0, 0);
+		{
+			logging::Message::Args args1;
+			logging::Message msg(1);
+			std::ostringstream oss;
+			oss << "ClientRotator::getModule installdir=" << installDir;
+			args1.add(oss.str());
+			msg.format( args1 );
+			Logger logger(logid.fSubsysID);
+			logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+		}
+
 	string fileName = installDir + "/local/module";
+        {
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "ClientRotator::getModule module file=" << fileName;
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
+
 	string module;
 	ifstream moduleFile (fileName.c_str());
 
 	if (moduleFile.is_open())
 		getline (moduleFile, module);
 	moduleFile.close();
+        {
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "ClientRotator::getModule module name=" << module;
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
+
 	return module;
 }
 

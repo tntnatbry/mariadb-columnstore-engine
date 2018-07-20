@@ -32,6 +32,21 @@ using namespace boost;
 #endif
 #include "installdir.h"
 
+#include "messagelog.h"
+#include "messageobj.h"
+#include "loggingid.h"
+using namespace logging;
+
+#include "logger.h"
+using namespace logging;
+
+/** Debug macro */
+#ifdef INFINIDB_DEBUG
+#define IDEBUG(x) {x;}
+#else
+#define IDEBUG(x) {}
+#endif
+
 namespace startup
 {
 /* static */
@@ -44,8 +59,23 @@ const string StartUp::installDir()
 {
 	mutex::scoped_lock lk(fInstallDirLock);
 
+	LoggingID logid( 24, 0, 0);
 	if (fInstallDirp)
+	{
+
+		{
+			logging::Message::Args args1;
+			logging::Message msg(1);
+			std::ostringstream oss;
+			oss << "StartUp::installDir, return on fInstallDirp" << *fInstallDirp;
+			args1.add(oss.str());
+			msg.format( args1 );
+			Logger logger(logid.fSubsysID);
+			logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+		}
+
 		return *fInstallDirp;
+	}
 
 #ifdef _MSC_VER
 	fInstallDirp = new string("C:\\Calpont");
@@ -56,13 +86,38 @@ const string StartUp::installDir()
 	fInstallDirp = new string("/usr/local/mariadb/columnstore");
 	//See if we can figure out the install dir in Linux...
 	//1. env var COLUMNSTORE_INSTALL_DIR
+
 	const char* p=0;
 	p = getenv("COLUMNSTORE_INSTALL_DIR");
 	if (p && *p)
+	{
+        {
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "StartUp::installDir, getenv " << *fInstallDirp;
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
+
 		*fInstallDirp = p;
+	}
 	//2. up one level from current binary location?
 	//3. fall back to /usr/local/mariadb/columnstore
 #endif
+
+        {
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "StartUp::installDir, return to user " << *fInstallDirp;
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
 
 	return *fInstallDirp;
 }
