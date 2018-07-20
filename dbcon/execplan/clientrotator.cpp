@@ -99,7 +99,35 @@ string ClientRotator::getModule()
 	ifstream moduleFile (fileName.c_str());
 
 	if (moduleFile.is_open())
+	{
+		{
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "ClientRotator::getModule open status=" << strerror(errno);
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
+
 		getline (moduleFile, module);
+	}
+	else
+	{
+        {
+            logging::Message::Args args1;
+            logging::Message msg(1);
+            std::ostringstream oss;
+            oss << "ClientRotator::getModule open status=" << strerror(errno);
+            args1.add(oss.str());
+            msg.format( args1 );
+            Logger logger(logid.fSubsysID);
+            logger.logMessage(LOG_TYPE_DEBUG, msg, logid);
+        }
+
+
+	}
 	moduleFile.close();
         {
             logging::Message::Args args1;
