@@ -104,7 +104,7 @@ string ClientRotator::getModule()
             logging::Message::Args args1;
             logging::Message msg(1);
             std::ostringstream oss;
-            oss << "ClientRotator::getModule open status=" << strerror(errno);
+            oss << "ClientRotator::getModule open status1 =" << strerror(errno);
             args1.add(oss.str());
             msg.format( args1 );
             Logger logger(logid.fSubsysID);
@@ -119,7 +119,7 @@ string ClientRotator::getModule()
             logging::Message::Args args1;
             logging::Message msg(1);
             std::ostringstream oss;
-            oss << "ClientRotator::getModule open status=" << strerror(errno);
+            oss << "ClientRotator::getModule open status2 =" << strerror(errno);
             args1.add(oss.str());
             msg.format( args1 );
             Logger logger(logid.fSubsysID);
