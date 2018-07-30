@@ -782,7 +782,7 @@ int fetchNextRow(uchar* buf, cal_table_info& ti, cal_connection_info* ci, bool h
                     //double double_val = *(double*)(&value);
                     //f2->store(double_val);
                     if ((f2->decimals() == DECIMAL_NOT_SPECIFIED && row.getScale(s) > 0)
-                     || f2->decimals() < row.getScale(s))
+                            || f2->decimals() < row.getScale(s))
                     {
                         f2->dec = row.getScale(s);
                     }
@@ -5265,6 +5265,7 @@ int ha_calpont_impl_group_by_init(ha_calpont_group_by_handler* group_hand, TABLE
         // MCOL-1052 Send Items lists down to the optimizer.
         gi.groupByTables = group_hand->table_list;
         gi.groupByFields = group_hand->select;
+        gi.groupByAuxDescr = &group_hand->select_list_descr;
         gi.groupByWhere = group_hand->where;
         gi.groupByGroup = group_hand->group_by;
         gi.groupByOrder = group_hand->order_by;
@@ -5278,6 +5279,7 @@ int ha_calpont_impl_group_by_init(ha_calpont_group_by_handler* group_hand, TABLE
             execplan::CalpontSelectExecutionPlan::ColumnMap::iterator colMapIter;
             execplan::CalpontSelectExecutionPlan::ColumnMap::iterator condColMapIter;
             execplan::ParseTree* ptIt;
+
             for (TABLE_LIST* tl = gi.groupByTables; tl; tl = tl->next_local)
             {
                 mapiter = ci->tableMap.find(tl->table);
@@ -5831,7 +5833,8 @@ int ha_calpont_impl_group_by_end(ha_calpont_group_by_handler* group_hand, TABLE*
 
         try
         {
-            sm::tpl_close(ti.tpl_ctx, &hndl, ci->stats);
+            if(hndl)
+                sm::tpl_close(ti.tpl_ctx, &hndl, ci->stats);
 
             ci->cal_conn_hndl = hndl;
 
