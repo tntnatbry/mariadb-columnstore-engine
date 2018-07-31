@@ -35,8 +35,6 @@ using namespace mcsv1sdk;
 #include "ssq.h"
 #include "median.h"
 #include "avg_mode.h"
-#include "../regr/regr_avgx.h"
-#include "../regr/regr_avgy.h"
 #include "avgx.h"
 
 UDAF_MAP& UDAFMap::fm()
@@ -62,8 +60,6 @@ UDAF_MAP& UDAFMap::getMap()
     fm["ssq"] = new ssq();
     fm["median"] = new median();
     fm["avg_mode"] = new avg_mode();
-//    fm["regr_avgx"] = new regr_avgx();
-//    fm["regr_avgy"] = new regr_avgy();
     fm["avgx"] = new avgx();
 
     return fm;
