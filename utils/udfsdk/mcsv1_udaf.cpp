@@ -31,16 +31,23 @@ using namespace mcsv1sdk;
  * This is a temporary kludge until we get the library loader
  * task complete
  */
-UDAF_MAP UDAFMap::fm;
 #include "allnull.h"
 #include "ssq.h"
 #include "median.h"
 #include "avg_mode.h"
-#include "regr_avgx.h"
-#include "regr_avgy.h"
+#include "../regr/regr_avgx.h"
+#include "../regr/regr_avgy.h"
 #include "avgx.h"
+
+UDAF_MAP& UDAFMap::fm()
+{
+    static UDAF_MAP* m = new UDAF_MAP;
+    return *m;
+}
+
 UDAF_MAP& UDAFMap::getMap()
 {
+    UDAF_MAP& fm = UDAFMap::fm();
     if (fm.size() > 0)
     {
         return fm;
@@ -55,8 +62,8 @@ UDAF_MAP& UDAFMap::getMap()
     fm["ssq"] = new ssq();
     fm["median"] = new median();
     fm["avg_mode"] = new avg_mode();
-    fm["regr_avgx"] = new regr_avgx();
-    fm["regr_avgy"] = new regr_avgy();
+//    fm["regr_avgx"] = new regr_avgx();
+//    fm["regr_avgy"] = new regr_avgy();
     fm["avgx"] = new avgx();
 
     return fm;

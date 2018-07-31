@@ -207,8 +207,6 @@
             <F N="avgx.cpp"/>
             <F N="mcsv1_udaf.cpp"/>
             <F N="median.cpp"/>
-            <F N="regr_avgx.cpp"/>
-            <F N="regr_avgy.cpp"/>
             <F N="ssq.cpp"/>
             <F N="udfmysql.cpp"/>
             <F N="udfsdk.cpp"/>
@@ -221,8 +219,6 @@
             <F N="avgx.h"/>
             <F N="mcsv1_udaf.h"/>
             <F N="median.h"/>
-            <F N="regr_avgx.h"/>
-            <F N="regr_avgy.h"/>
             <F N="ssq.h"/>
             <F N="udfsdk.h"/>
         </Folder>

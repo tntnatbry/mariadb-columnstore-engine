@@ -84,8 +84,8 @@ CREATE FUNCTION idbpartition RETURNS STRING soname 'libcalmysql.so';
 CREATE FUNCTION idblocalpm RETURNS INTEGER soname 'libcalmysql.so';
 CREATE FUNCTION mcssystemready RETURNS INTEGER soname 'libcalmysql.so';
 CREATE FUNCTION mcssystemreadonly RETURNS INTEGER soname 'libcalmysql.so';
-CREATE AGGREGATE FUNCTION regr_avgx RETURNS REAL soname 'libcalmysql.dll';
-CREATE AGGREGATE FUNCTION regr_avgy RETURNS REAL soname 'libcalmysql.dll';
+CREATE AGGREGATE FUNCTION regr_avgx RETURNS REAL soname 'libregr_mysql.so';
+CREATE AGGREGATE FUNCTION regr_avgy RETURNS REAL soname 'libregr_mysql.so';
 
 CREATE DATABASE IF NOT EXISTS infinidb_vtable;
 CREATE DATABASE IF NOT EXISTS infinidb_querystats;
