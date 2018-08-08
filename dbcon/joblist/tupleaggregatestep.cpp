@@ -849,7 +849,7 @@ SJSTEP TupleAggregateStep::prepAggregate(SJSTEP& step, JobInfo& jobInfo)
                 idbassert(cc != NULL);   // @bug5261
                 bool isNull = (ConstantColumn::NULLDATA == cc->type());
 
-                if (ac->aggOp() == ROWAGG_UDAF)
+                if (ac->aggOp() == AggregateColumn::UDAF)
                 {
                     UDAFColumn* udafc = dynamic_cast<UDAFColumn*>(ac);
                     if (udafc)
@@ -1098,7 +1098,6 @@ void TupleAggregateStep::prep1PhaseAggregate(
     uint32_t bigUintWidth = sizeof(uint64_t);
     // For UDAF
     uint32_t projColsUDAFIdx = 0;
-    uint32_t udafcParamIdx = 0;
     UDAFColumn* udafc = NULL;
     mcsv1sdk::mcsv1_UDAF* pUDAFFunc = NULL;
     // for count column of average function
@@ -1485,39 +1484,11 @@ void TupleAggregateStep::prep1PhaseAggregate(
                 precisionAgg.push_back(udafFuncCol->fUDAFContext.getPrecision());
                 typeAgg.push_back(udafFuncCol->fUDAFContext.getResultType());
                 widthAgg.push_back(udafFuncCol->fUDAFContext.getColWidth());
-                // If the first param is const
-                udafcParamIdx = 0;
-                ConstantColumn* cc = dynamic_cast<ConstantColumn*>(udafc->aggParms()[udafcParamIdx].get());
-                if (cc)
-                {
-                    funct->fpConstCol = udafc->aggParms()[udafcParamIdx];
-                }
-                ++udafcParamIdx;
                 break;
             }
 
             case ROWAGG_MULTI_PARM:
             {
-                oidsAgg.push_back(oidsProj[colProj]);
-                keysAgg.push_back(key);
-                scaleAgg.push_back(scaleProj[colProj]);
-                precisionAgg.push_back(precisionProj[colProj]);
-                typeAgg.push_back(typeProj[colProj]);
-                widthAgg.push_back(width[colProj]);
-                // If the param is const
-                if (udafc)
-                {
-                    ConstantColumn* cc = dynamic_cast<ConstantColumn*>(udafc->aggParms()[udafcParamIdx].get());
-                    if (cc)
-                    {
-                        funct->fpConstCol = udafc->aggParms()[udafcParamIdx];
-                    }
-                }
-                else
-                {
-                    throw QueryDataExcept("prep1PhaseAggregate: UDAF multi function with no parms", aggregateFuncErr);
-                }
-                ++udafcParamIdx;
             }
             break;
 

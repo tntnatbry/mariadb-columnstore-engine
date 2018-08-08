@@ -2041,7 +2041,6 @@ void RowAggregation::doUDAF(const Row& rowIn, int64_t colIn, int64_t colOut,
             if (fRGContext.getRunFlag(mcsv1sdk::UDAF_IGNORE_NULLS))
             {
                 bIsNull = true;
-                ++funcColsIdx;
                 continue;
             }
             dataFlags[i] |= mcsv1sdk::PARAM_IS_NULL;
@@ -3391,6 +3390,7 @@ void RowAggregationUM::doNullConstantAggregate(const ConstantAggData& aggData, u
             // For a NULL constant, call nextValue with NULL and then evaluate.
             bool bInterrupted = false;
             fRGContext.setInterrupted(bInterrupted);
+            fRGContext.setName(aggData.fUDAFName);
             fRGContext.createUserData();
             mcsv1sdk::mcsv1_UDAF::ReturnCode rc;
             mcsv1sdk::ColumnDatum valsIn[1];
