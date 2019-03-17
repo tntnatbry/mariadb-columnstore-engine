@@ -90,6 +90,15 @@ public:
         return (isNull ? 0 : stringToDatetime(str));
     }
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct)
+    {
+        std::string str = getStrVal(row, fp, isNull, op_ct);
+        return (isNull ? 0 : stringToTimestamp(str));
+    }
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -203,6 +212,11 @@ public:
                               FunctionParm& fp,
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
 };
 
 
@@ -534,6 +548,11 @@ public:
                               FunctionParm& fp,
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
 };
 
 
@@ -682,6 +701,11 @@ public:
                               FunctionParm& fp,
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,

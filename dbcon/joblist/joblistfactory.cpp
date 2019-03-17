@@ -2000,6 +2000,7 @@ SJLP makeJobList_(
     jobInfo.stringTableThreshold = csep->stringTableThreshold();
     jobInfo.localQuery = csep->localQuery();
     jobInfo.uuid = csep->uuid();
+    jobInfo.timeZone = csep->timeZone();
 
     /* disk-based join vars */
     jobInfo.smallSideLimit = csep->djsSmallSideLimit();

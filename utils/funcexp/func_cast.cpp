@@ -191,6 +191,15 @@ int64_t Func_cast_signed::getIntVal(Row& row,
         }
         break;
 
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            int64_t time = parm[0]->data()->getTimestampIntVal(row, isNull);
+
+            TimeStamp dt(time);
+            return dt.convertToMySQLint(fTimeZone);
+        }
+        break;
+
         case execplan::CalpontSystemCatalog::TIME:
         {
             int64_t time = parm[0]->data()->getTimeIntVal(row, isNull);
@@ -322,6 +331,15 @@ uint64_t Func_cast_unsigned::getUintVal(Row& row,
         }
         break;
 
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            int64_t time = parm[0]->data()->getTimestampIntVal(row, isNull);
+
+            TimeStamp dt(time);
+            return dt.convertToMySQLint(fTimeZone);
+        }
+        break;
+
         case execplan::CalpontSystemCatalog::TIME:
         {
             int64_t time = parm[0]->data()->getTimeIntVal(row, isNull);
@@ -437,6 +455,12 @@ string Func_cast_char::getStrVal(Row& row,
         case execplan::CalpontSystemCatalog::DATETIME:
         {
             return  dataconvert::DataConvert::datetimeToString(parm[0]->data()->getDatetimeIntVal(row, isNull)).substr(0, length);
+        }
+        break;
+
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            return  dataconvert::DataConvert::timestampToString(parm[0]->data()->getTimestampIntVal(row, isNull), fTimeZone).substr(0, length);
         }
         break;
 
@@ -589,6 +613,13 @@ int32_t Func_cast_date::getDateIntVal(rowgroup::Row& row,
         {
             return parm[0]->data()->getDateIntVal(row, isNull);
         }
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            int64_t val1 = parm[0]->data()->getTimestampIntVal(row, isNull);
+            string value = dataconvert::DataConvert::timestampToString(val1, fTimeZone);
+            value = value.substr(0, 10);
+            return dataconvert::DataConvert::stringToDate(value);
+        }
         case execplan::CalpontSystemCatalog::TIME:
         {
             int64_t val1;
@@ -706,6 +737,22 @@ int64_t Func_cast_date::getDatetimeIntVal(rowgroup::Row& row,
             val1.second = 0;
             val1.msecond = 0;
             return *(reinterpret_cast<uint64_t*>(&val1));
+        }
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            TimeStamp timestamp(parm[0]->data()->getTimestampIntVal(row, isNull));
+            int64_t seconds = timestamp.second;
+            MySQLTime m_time;
+            gmtSecToMySQLTime(seconds, m_time, fTimeZone);
+            DateTime dt;
+            dt.year = m_time.year;
+            dt.month = m_time.month;
+            dt.day = m_time.day;
+            dt.hour = 0;
+            dt.minute = 0;
+            dt.second = 0;
+            dt.msecond = 0;
+            return *(reinterpret_cast<uint64_t*>(&dt));
         }
         case CalpontSystemCatalog::TIME:
         {
@@ -862,6 +909,23 @@ int64_t Func_cast_datetime::getDatetimeIntVal(rowgroup::Row& row,
             return parm[0]->data()->getDatetimeIntVal(row, isNull);
         }
 
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            TimeStamp timestamp(parm[0]->data()->getTimestampIntVal(row, isNull));
+            int64_t seconds = timestamp.second;
+            MySQLTime m_time;
+            gmtSecToMySQLTime(seconds, m_time, fTimeZone);
+            DateTime dt;
+            dt.year = m_time.year;
+            dt.month = m_time.month;
+            dt.day = m_time.day;
+            dt.hour = m_time.hour;
+            dt.minute = m_time.minute;
+            dt.second = m_time.second;
+            dt.msecond = timestamp.msecond;
+            return *(reinterpret_cast<int64_t*>(&dt));
+        }
+
         case CalpontSystemCatalog::TIME:
         {
             DateTime aDateTime = static_cast<DateTime>(nowDatetime());
@@ -957,6 +1021,22 @@ int64_t Func_cast_datetime::getTimeIntVal(rowgroup::Row& row,
         case execplan::CalpontSystemCatalog::DATETIME:
         {
             return parm[0]->data()->getTimeIntVal(row, isNull);
+        }
+
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            TimeStamp timestamp(parm[0]->data()->getTimestampIntVal(row, isNull));
+            int64_t seconds = timestamp.second;
+            MySQLTime m_time;
+            gmtSecToMySQLTime(seconds, m_time, fTimeZone);
+            Time time;
+            time.hour = m_time.hour;
+            time.minute = m_time.minute;
+            time.second = m_time.second;
+            time.is_neg = 0;
+            time.day = 0;
+            time.msecond = 0;
+            return *(reinterpret_cast<int64_t*>(&time));
         }
 
         default:
@@ -1303,6 +1383,25 @@ IDB_Decimal Func_cast_decimal::getDecimalVal(Row& row,
         }
         break;
 
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            int32_t s = 0;
+
+            string value = dataconvert::DataConvert::timestampToString1(parm[0]->data()->getTimestampIntVal(row, isNull), fTimeZone);
+
+            //strip off micro seconds
+            string date = value.substr(0, 14);
+
+            int64_t x = atoll(date.c_str());
+
+            if (!isNull)
+            {
+                decimal.value = x;
+                decimal.scale = s;
+            }
+        }
+        break;
+
         case execplan::CalpontSystemCatalog::TIME:
         {
             int32_t s = 0;
@@ -1403,6 +1502,18 @@ double Func_cast_double::getDoubleVal(Row& row,
         {
             int64_t intval = parm[0]->data()->getIntVal(row, isNull);
             dblval = (double) intval;
+        }
+        break;
+
+        case execplan::CalpontSystemCatalog::TIMESTAMP:
+        {
+            string str =
+                DataConvert::timestampToString1(parm[0]->data()->getTimestampIntVal(row, isNull), fTimeZone);
+
+            // strip off micro seconds
+            str = str.substr(0, 14);
+
+            dblval = atof(str.c_str());
         }
         break;
 

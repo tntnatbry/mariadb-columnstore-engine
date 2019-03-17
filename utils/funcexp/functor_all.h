@@ -105,6 +105,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -157,6 +162,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -205,6 +215,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -251,6 +266,11 @@ public:
                               FunctionParm& fp,
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
@@ -309,6 +329,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -357,6 +382,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -404,6 +434,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,
@@ -440,6 +475,11 @@ public:
                           FunctionParm& fp,
                           bool& isNull,
                           execplan::CalpontSystemCatalog::ColType& op_ct);
+
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
     int64_t getIntVal(rowgroup::Row& row,
                       FunctionParm& fp,

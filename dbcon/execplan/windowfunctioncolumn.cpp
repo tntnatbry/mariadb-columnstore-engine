@@ -234,7 +234,8 @@ WindowFunctionColumn::WindowFunctionColumn( const WindowFunctionColumn& rhs, con
     fFunctionParms(rhs.functionParms()),
     fPartitions (rhs.partitions()),
     fOrderBy (rhs.orderBy()),
-    udafContext(rhs.getUDAFContext())
+    udafContext(rhs.getUDAFContext()),
+    fTimeZone(rhs.timeZone())
 {}
 
 const string WindowFunctionColumn::toString() const
@@ -287,6 +288,7 @@ void WindowFunctionColumn::serialize(messageqcpp::ByteStream& b) const
 
     fOrderBy.serialize(b);
     udafContext.serialize(b);
+    b << fTimeZone;
 }
 
 void WindowFunctionColumn::unserialize(messageqcpp::ByteStream& b)
@@ -318,6 +320,7 @@ void WindowFunctionColumn::unserialize(messageqcpp::ByteStream& b)
 
     fOrderBy.unserialize(b);
     udafContext.unserialize(b);
+    b >> fTimeZone;
 }
 
 void WindowFunctionColumn::addToPartition(vector<SRCP>& groupByList)
@@ -397,6 +400,16 @@ void WindowFunctionColumn::evaluate(Row& row, bool& isNull)
         case CalpontSystemCatalog::DATETIME:
         {
             if (row.equals<8>(DATETIMENULL, fInputIndex))
+                isNull = true;
+            else
+                fResult.intVal = row.getUintField<8>(fInputIndex);
+
+            break;
+        }
+
+        case CalpontSystemCatalog::TIMESTAMP:
+        {
+            if (row.equals<8>(TIMESTAMPNULL, fInputIndex))
                 isNull = true;
             else
                 fResult.intVal = row.getUintField<8>(fInputIndex);

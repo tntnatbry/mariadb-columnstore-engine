@@ -269,6 +269,9 @@ inline string colTypeIdString(CalpontSystemCatalog::ColDataType type)
         case CalpontSystemCatalog::DATETIME:
             return string("DATETIME");
 
+        case CalpontSystemCatalog::TIMESTAMP:
+            return string("TIMESTAMP");
+
         case CalpontSystemCatalog::TIME:
             return string("TIME");
 
@@ -1386,6 +1389,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
                         typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                         typeProj[colProj] == CalpontSystemCatalog::DATE ||
                         typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                        typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                         typeProj[colProj] == CalpontSystemCatalog::TIME)
                 {
                     Message::Args args;
@@ -1469,6 +1473,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
                         typeProj[colProj] == CalpontSystemCatalog::BLOB ||
                         typeProj[colProj] == CalpontSystemCatalog::DATE ||
                         typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                        typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                         typeProj[colProj] == CalpontSystemCatalog::TIME)
                 {
                     Message::Args args;
@@ -1664,6 +1669,7 @@ void TupleAggregateStep::prep1PhaseAggregate(
     RowGroup aggRG(oidsAgg.size(), posAgg, oidsAgg, keysAgg, typeAgg, scaleAgg, precisionAgg,
                    jobInfo.stringTableThreshold);
     SP_ROWAGG_UM_t rowAgg(new RowAggregationUM(groupBy, functionVec, jobInfo.rm, jobInfo.umMemLimit));
+    rowAgg->timeZone(jobInfo.timeZone);
     rowgroups.push_back(aggRG);
     aggregators.push_back(rowAgg);
 
@@ -1957,6 +1963,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -2043,6 +2050,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -2305,6 +2313,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                             typeAgg[colAgg] == CalpontSystemCatalog::TEXT ||
                             typeAgg[colAgg] == CalpontSystemCatalog::DATE ||
                             typeAgg[colAgg] == CalpontSystemCatalog::DATETIME ||
+                            typeAgg[colAgg] == CalpontSystemCatalog::TIMESTAMP ||
                             typeAgg[colAgg] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -2752,6 +2761,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
     RowGroup aggRG(oidsAgg.size(), posAgg, oidsAgg, keysAgg, typeAgg, scaleAgg, precisionAgg,
                    jobInfo.stringTableThreshold);
     SP_ROWAGG_UM_t rowAgg(new RowAggregationUM(groupBy, functionVec1, jobInfo.rm, jobInfo.umMemLimit));
+    rowAgg->timeZone(jobInfo.timeZone);
 
     posAggDist.push_back(2);   // rid
 
@@ -2761,6 +2771,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
     RowGroup aggRgDist(oidsAggDist.size(), posAggDist, oidsAggDist, keysAggDist, typeAggDist,
                        scaleAggDist, precisionAggDist, jobInfo.stringTableThreshold);
     SP_ROWAGG_DIST rowAggDist(new RowAggregationDistinct(groupByNoDist, functionVec2, jobInfo.rm, jobInfo.umMemLimit));
+    rowAggDist->timeZone(jobInfo.timeZone);
 
     // mapping the group_concat columns, if any.
     if (jobInfo.groupConcatInfo.groupConcat().size() > 0)
@@ -2777,6 +2788,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
     {
         RowAggregationMultiDistinct* multiDistinctAggregator =
             new RowAggregationMultiDistinct(groupByNoDist, functionVec2, jobInfo.rm, jobInfo.umMemLimit);
+        multiDistinctAggregator->timeZone(jobInfo.timeZone);
         rowAggDist.reset(multiDistinctAggregator);
         rowAggDist->groupConcat(jobInfo.groupConcatInfo.groupConcat());
 
@@ -2906,6 +2918,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
             // construct sub-aggregator
             SP_ROWAGG_UM_t subAgg(
                 new RowAggregationSubDistinct(groupBySub, functionSub1, jobInfo.rm, jobInfo.umMemLimit));
+            subAgg->timeZone(jobInfo.timeZone);
             subAgg->groupConcat(jobInfo.groupConcatInfo.groupConcat());
 
             // add to rowAggDist
@@ -2981,6 +2994,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                 // construct sub-aggregator
                 SP_ROWAGG_UM_t subAgg(
                     new RowAggregationUM(groupBySubNoDist, functionSub1, jobInfo.rm, jobInfo.umMemLimit));
+                subAgg->timeZone(jobInfo.timeZone);
                 subAgg->groupConcat(jobInfo.groupConcatInfo.groupConcat());
 
                 // add to rowAggDist
@@ -3261,6 +3275,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -3351,6 +3366,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -3840,6 +3856,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
     RowGroup aggRgUm(oidsAggUm.size(), posAggUm, oidsAggUm, keysAggUm, typeAggUm, scaleAggUm,
                      precisionAggUm, jobInfo.stringTableThreshold);
     SP_ROWAGG_UM_t rowAggUm(new RowAggregationUMP2(groupByUm, functionVecUm, jobInfo.rm, jobInfo.umMemLimit));
+    rowAggUm->timeZone(jobInfo.timeZone);
     rowgroups.push_back(aggRgUm);
     aggregators.push_back(rowAggUm);
 
@@ -3851,6 +3868,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
     RowGroup aggRgPm(oidsAggPm.size(), posAggPm, oidsAggPm, keysAggPm, typeAggPm, scaleAggPm,
                      precisionAggPm, jobInfo.stringTableThreshold);
     SP_ROWAGG_PM_t rowAggPm(new RowAggregation(groupByPm, functionVecPm));
+    rowAggPm->timeZone(jobInfo.timeZone);
     rowgroups.push_back(aggRgPm);
     aggregators.push_back(rowAggPm);
 
@@ -4155,6 +4173,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -4241,6 +4260,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                             typeProj[colProj] == CalpontSystemCatalog::TEXT ||
                             typeProj[colProj] == CalpontSystemCatalog::DATE ||
                             typeProj[colProj] == CalpontSystemCatalog::DATETIME ||
+                            typeProj[colProj] == CalpontSystemCatalog::TIMESTAMP ||
                             typeProj[colProj] == CalpontSystemCatalog::TIME)
                     {
                         Message::Args args;
@@ -4550,6 +4570,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                                 typeAggUm[colUm] == CalpontSystemCatalog::TEXT ||
                                 typeAggUm[colUm] == CalpontSystemCatalog::DATE ||
                                 typeAggUm[colUm] == CalpontSystemCatalog::DATETIME ||
+                                typeAggUm[colUm] == CalpontSystemCatalog::TIMESTAMP ||
                                 typeAggUm[colUm] == CalpontSystemCatalog::TIME)
                         {
                             Message::Args args;
@@ -4941,6 +4962,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
     RowGroup aggRgUm(oidsAggUm.size(), posAggUm, oidsAggUm, keysAggUm, typeAggUm, scaleAggUm,
                      precisionAggUm, jobInfo.stringTableThreshold);
     SP_ROWAGG_UM_t rowAggUm(new RowAggregationUMP2(groupByUm, functionNoDistVec, jobInfo.rm, jobInfo.umMemLimit));
+    rowAggUm->timeZone(jobInfo.timeZone);
 
     posAggDist.push_back(2);   // rid
 
@@ -4950,6 +4972,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
     RowGroup aggRgDist(oidsAggDist.size(), posAggDist, oidsAggDist, keysAggDist, typeAggDist,
                        scaleAggDist, precisionAggDist, jobInfo.stringTableThreshold);
     SP_ROWAGG_DIST rowAggDist(new RowAggregationDistinct(groupByNoDist, functionVecUm, jobInfo.rm, jobInfo.umMemLimit));
+    rowAggDist->timeZone(jobInfo.timeZone);
 
     // if distinct key word applied to more than one aggregate column, reset rowAggDist
     vector<RowGroup> subRgVec;
@@ -4958,6 +4981,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
     {
         RowAggregationMultiDistinct* multiDistinctAggregator =
             new RowAggregationMultiDistinct(groupByNoDist, functionVecUm, jobInfo.rm, jobInfo.umMemLimit);
+        multiDistinctAggregator->timeZone(jobInfo.timeZone);
         rowAggDist.reset(multiDistinctAggregator);
 
         // construct and add sub-aggregators to rowAggDist
@@ -5086,6 +5110,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
             // construct sub-aggregator
             SP_ROWAGG_UM_t subAgg(new RowAggregationSubDistinct(groupBySub, functionSub1, jobInfo.rm, jobInfo.umMemLimit));
+            subAgg->timeZone(jobInfo.timeZone);
 
             // add to rowAggDist
             multiDistinctAggregator->addSubAggregator(subAgg, subRg, functionSub2);
@@ -5161,6 +5186,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                 // construct sub-aggregator
                 SP_ROWAGG_UM_t subAgg(
                     new RowAggregationUMP2(groupBySubNoDist, functionSub1, jobInfo.rm, jobInfo.umMemLimit));
+                subAgg->timeZone(jobInfo.timeZone);
 
                 // add to rowAggDist
                 multiDistinctAggregator->addSubAggregator(subAgg, aggRgUm, functionSub2);
@@ -5181,6 +5207,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
     RowGroup aggRgPm(oidsAggPm.size(), posAggPm, oidsAggPm, keysAggPm, typeAggPm, scaleAggPm,
                      precisionAggPm, jobInfo.stringTableThreshold);
     SP_ROWAGG_PM_t rowAggPm(new RowAggregation(groupByPm, functionVecPm));
+    rowAggPm->timeZone(jobInfo.timeZone);
     rowgroups.push_back(aggRgPm);
     aggregators.push_back(rowAggPm);
 

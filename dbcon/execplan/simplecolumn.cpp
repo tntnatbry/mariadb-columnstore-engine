@@ -195,6 +195,7 @@ SimpleColumn::SimpleColumn (const SimpleColumn& rhs, const uint32_t sessionID):
     fData (rhs.data()),
     fIndexName (rhs.indexName()),
     fViewName (rhs.viewName()),
+    fTimeZone (rhs.timeZone()),
     fIsInfiniDB (rhs.isInfiniDB())
 {
 }
@@ -228,6 +229,7 @@ SimpleColumn& SimpleColumn::operator=(const SimpleColumn& rhs)
         fAsc = rhs.asc();
         fIndexName = rhs.indexName();
         fViewName = rhs.viewName();
+        fTimeZone = rhs.timeZone();
         fData = rhs.data();
         fSequence = rhs.sequence();
         fDistinct = rhs.distinct();
@@ -344,6 +346,7 @@ void SimpleColumn::serialize(messageqcpp::ByteStream& b) const
     b << fColumnName;
     b << fIndexName;
     b << fViewName;
+    b << fTimeZone;
     b << (uint32_t) fOid;
     b << fData;
     b << fTableAlias;
@@ -360,6 +363,7 @@ void SimpleColumn::unserialize(messageqcpp::ByteStream& b)
     b >> fColumnName;
     b >> fIndexName;
     b >> fViewName;
+    b >> fTimeZone;
     b >> (uint32_t&) fOid;
     b >> fData;
     b >> fTableAlias;
@@ -387,6 +391,9 @@ bool SimpleColumn::operator==(const SimpleColumn& t) const
         return false;
 
     if (fViewName != t.fViewName)
+        return false;
+
+    if (fTimeZone != t.fTimeZone)
         return false;
 
     if (fOid != t.fOid)
@@ -496,6 +503,7 @@ void SimpleColumn::evaluate(Row& row, bool& isNull)
         }
 
         case CalpontSystemCatalog::DATETIME:
+        case CalpontSystemCatalog::TIMESTAMP:
         case CalpontSystemCatalog::TIME:
         {
             fResult.intVal = row.getUintField<8>(fInputIndex);

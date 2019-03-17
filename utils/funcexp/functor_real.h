@@ -654,6 +654,11 @@ public:
                               bool& isNull,
                               execplan::CalpontSystemCatalog::ColType& op_ct);
 
+    int64_t getTimestampIntVal(rowgroup::Row& row,
+                               FunctionParm& fp,
+                               bool& isNull,
+                               execplan::CalpontSystemCatalog::ColType& op_ct);
+
     int64_t getTimeIntVal(rowgroup::Row& row,
                           FunctionParm& fp,
                           bool& isNull,

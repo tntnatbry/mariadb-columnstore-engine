@@ -66,7 +66,7 @@ using namespace joblist;
 namespace
 {
 
-void getColumnValue(ConstantColumn** cc, uint64_t i, const Row& row)
+void getColumnValue(ConstantColumn** cc, uint64_t i, const Row& row, const string& timeZone)
 {
     ostringstream oss;
     int64_t data = 0;
@@ -132,6 +132,11 @@ void getColumnValue(ConstantColumn** cc, uint64_t i, const Row& row)
 
         case CalpontSystemCatalog::DATETIME:
             oss << dataconvert::DataConvert::datetimeToString(row.getUintField<8>(i));
+            *cc = new ConstantColumn(oss.str());
+            break;
+
+        case CalpontSystemCatalog::TIMESTAMP:
+            oss << dataconvert::DataConvert::timestampToString(row.getUintField<8>(i), timeZone);
             *cc = new ConstantColumn(oss.str());
             break;
 
@@ -495,7 +500,7 @@ const SRCP doSelectSubquery(CalpontExecutionPlan* ep, SRCP& sc, JobInfo& jobInfo
             const Row& row = simpleTransformer.resultRow();
 
             if (!row.isNullValue(0))
-                getColumnValue(&cc, 0, row);
+                getColumnValue(&cc, 0, row, jobInfo.timeZone);
         }
 
         // Empty set or null value
@@ -570,7 +575,7 @@ bool simpleScalarFilterToParseTree(SimpleScalarFilter* sf, ParseTree*& pt, JobIn
 
             // set fResult for cc
             ConstantColumn* cc = NULL;
-            getColumnValue(&cc, i, row);
+            getColumnValue(&cc, i, row, jobInfo.timeZone);
             sop->setOpType(cols[i]->resultType(), cc->resultType());
 
             SimpleFilter* sf = new SimpleFilter(sop, cols[i]->clone(), cc);
