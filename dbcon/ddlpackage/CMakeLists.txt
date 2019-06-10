@@ -9,9 +9,6 @@ ADD_CUSTOM_COMMAND(
     DEPENDS ddl.y ddl.l
 )
 
-# Parser puts extra info to stderr.
-MY_CHECK_AND_SET_COMPILER_FLAG("-DYYDEBUG=1" DEBUG)
-
 ########### next target ###############
 
 ADD_LIBRARY(ddlpackage SHARED
