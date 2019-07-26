@@ -1584,6 +1584,7 @@ RowGroup& RowGroup::operator+=(const RowGroup& rhs)
     }
 
     hasLongStringField = rhs.hasLongStringField || hasLongStringField;
+    useStringTable = rhs.useStringTable || useStringTable;
     offsets = (useStringTable ? &stOffsets[0] : &oldOffsets[0]);
 
     return *this;
