@@ -187,6 +187,7 @@ LONGTEXT {return LONGTEXT;}
 BOOL {return BOOL;}
 BOOLEAN {return BOOLEAN;}
 MEDIUMINT {return MEDIUMINT;}
+BINARY {return BINARY;}
 
 \n { lineno++;}
 
