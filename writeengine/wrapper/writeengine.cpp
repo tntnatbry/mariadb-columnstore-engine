@@ -501,6 +501,7 @@ void WriteEngineWrapper::convertValue(const ColType colType, void* valArray, con
                 break;
                 
             case WriteEngine::WR_BINARY:
+            case WriteEngine::WR_BCDECIMAL:
                 curStr = boost::any_cast<string>(data);
                 memcpy((char*)valArray + pos * curStr.length(), curStr.c_str(), curStr.length());
                 break;     
@@ -5155,6 +5156,7 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                     break;
 
                 case WriteEngine::WR_BINARY:
+                case WriteEngine::WR_BCDECIMAL:
                     valArray =  calloc(colStructList[i].colWidth, totalRow1);
                     break;
             }
