@@ -183,6 +183,8 @@ void ColumnCommand::loadData()
             if (colType.colWidth == 8)
                 oPtr = reinterpret_cast<ByteStream::octbyte*>(&bpp->blockData[i * BLOCK_SIZE]);
 
+            // TODO: GG Add support for binary. 16/32 column widths
+
             for (int idx = 0; idx < blockLen; idx++)
             {
                 if (bPtr && colType.colWidth == 1)
@@ -245,7 +247,7 @@ void ColumnCommand::issuePrimitive()
         bpp->pp.setParsedColumnFilter(parsedColumnFilter);
     else
         bpp->pp.setParsedColumnFilter(emptyFilter);
-    
+
     bpp->pp.p_Col(primMsg, outMsg, bpp->outMsgSize, (unsigned int*)&resultSize);
 
     /* Update CP data, the PseudoColumn code should always be !_isScan.  Should be safe
@@ -273,6 +275,20 @@ void ColumnCommand::process_OT_BOTH()
     /* this is verbose and repetative to minimize the work per row */
     switch (colType.colWidth)
     {
+        case 32:
+            for (i = 0, pos = sizeof(NewColResultHeader); i < outMsg->NVALS; ++i)
+            {
+                if (makeAbsRids)
+                    bpp->absRids[i] = *((uint16_t*) &bpp->outputMsg[pos]) + bpp->baseRid;
+
+                bpp->relRids[i] = *((uint16_t*) &bpp->outputMsg[pos]);
+                pos += 2;
+                values[i] = (int64_t) &bpp->outputMsg[pos];
+                pos += 32;
+            }
+
+            break;
+
         case 16:
             for (i = 0, pos = sizeof(NewColResultHeader); i < outMsg->NVALS; ++i)
             {
@@ -281,23 +297,12 @@ void ColumnCommand::process_OT_BOTH()
 
                 bpp->relRids[i] = *((uint16_t*) &bpp->outputMsg[pos]);
                 pos += 2;
-                // values[i] is 8 Bytes wide so coping the pointer to bpp->outputMsg[pos] and crossing fingers
-                // I dont know the liveness of bpp->outputMsg but also I dont know if there is other memory area I can use
                 values[i] = (int64_t) &bpp->outputMsg[pos];
-             
-//                cout<< "CC:  BIN16 " << i << " " 
-//                        << hex 
-//                        << *((int64_t*)values[i])
-//                        << " "
-//                        << *(((int64_t*)values[i]) +1)
-//                        << endl;
                 pos += 16;
             }
 
             break;
-        
-     
-        
+
         case 8:
             for (i = 0, pos = sizeof(NewColResultHeader); i < outMsg->NVALS; ++i)
             {
@@ -371,14 +376,18 @@ void ColumnCommand::process_OT_DATAVALUE()
 // 	cout << "rid Count is " << bpp->ridCount << endl;
     switch (colType.colWidth)
     {
-         case 16:
+        case 32:
         {
-            memcpy(values, outMsg + 1, outMsg->NVALS << 3);
-            cout << "  CC: first value is " << values[0] << endl;
+            memcpy(values, outMsg + 1, outMsg->NVALS << 5);
             break;
         }
 
-        
+        case 16:
+        {
+            memcpy(values, outMsg + 1, outMsg->NVALS << 4);
+            break;
+        }
+
         case 8:
         {
             memcpy(values, outMsg + 1, outMsg->NVALS << 3);
@@ -492,9 +501,6 @@ void ColumnCommand::createCommand(ByteStream& bs)
     bs >> BOP;
     bs >> filterCount;
     deserializeInlineVector(bs, lastLbid);
-    
-//    cout <<  __func__ << " colType.colWidth " << colType.colWidth << endl;
-        
 //	cout << "lastLbid count=" << lastLbid.size() << endl;
 //	for (uint32_t i = 0; i < lastLbid.size(); i++)
 //		cout << "  " << lastLbid[i];
@@ -524,7 +530,7 @@ void ColumnCommand::resetCommand(ByteStream& bs)
 void ColumnCommand::prep(int8_t outputType, bool absRids)
 {
     /* make the template NewColRequestHeader */
-    
+
     baseMsgLength = sizeof(NewColRequestHeader) +
                     (suppressFilter ? 0 : filterString.length());
 
@@ -590,12 +596,18 @@ void ColumnCommand::prep(int8_t outputType, bool absRids)
             shift = 1;
             mask = 0x01;
             break;
+
+        // TODO: GG Confirm if this is correct
         case 16:
-            cout << __FILE__<< ":" <<__LINE__ << " Fix shift and mask for 16 Bytes ?"<< endl;
             shift = 1;
             mask = 0x01;
             break;
-            
+
+        case 32:
+            shift = 1;
+            mask = 0x01;
+            break;
+
         default:
             cout << "CC: colWidth is " << colType.colWidth << endl;
             throw logic_error("ColumnCommand: bad column width?");
@@ -792,9 +804,11 @@ void ColumnCommand::projectResultRG(RowGroup& rg, uint32_t pos)
 
             break;
         }
-        
-        case 16:
-        cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << endl;
+
+        // TODO: GG Add support for binary. 16/32 column widths.
+        // See PassThruCommand::projectIntoRowGroup for similar impl.
+        // case 16:
+        // case 32:
     }
 }
 

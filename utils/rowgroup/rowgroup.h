@@ -28,7 +28,6 @@
 #ifndef ROWGROUP_H_
 #define ROWGROUP_H_
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <stdexcept>
@@ -391,7 +390,7 @@ public:
     inline void setVarBinaryField(const uint8_t* val, uint32_t len, uint32_t colIndex);
 
     inline std::string getBinaryField(uint32_t colIndex) const;
-    
+
     inline boost::shared_ptr<mcsv1sdk::UserData> getUserData(uint32_t colIndex) const;
     inline void setUserData(mcsv1sdk::mcsv1Context& context,
                             boost::shared_ptr<mcsv1sdk::UserData> userData,
@@ -612,8 +611,11 @@ inline bool Row::equals(uint64_t val, uint32_t colIndex) const
 
         case 8:
             return *((uint64_t*) &data[offsets[colIndex]]) == val;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::equals(): bad length.");
@@ -653,8 +655,11 @@ inline uint64_t Row::getUintField(uint32_t colIndex) const
 
         case 8:
             return *((uint64_t*) &data[offsets[colIndex]]);
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::getUintField(): bad length.");
@@ -673,10 +678,13 @@ inline uint64_t Row::getUintField(uint32_t colIndex) const
 
         case 4:
             return *((uint32_t*) &data[offsets[colIndex]]);
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
+
         case 8:
             return *((uint64_t*) &data[offsets[colIndex]]);
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
 
         default:
             idbassert(0);
@@ -910,10 +918,11 @@ inline void Row::setUintField_offset(uint64_t val, uint32_t offset)
         case 8:
             *((uint64_t*) &data[offset]) = val;
             break;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
-            *((uint64_t*) &data[offset]) = val;
-            break;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::setUintField called on a non-uint32_t field");
@@ -951,10 +960,11 @@ inline void Row::setUintField(uint64_t val, uint32_t colIndex)
         case 8:
             *((uint64_t*) &data[offsets[colIndex]]) = val;
             break;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
-            *((uint64_t*) &data[offsets[colIndex]]) = val;
-            break;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::setUintField called on a non-uint32_t field");
@@ -980,9 +990,11 @@ inline void Row::setUintField(uint64_t val, uint32_t colIndex)
         case 8:
             *((uint64_t*) &data[offsets[colIndex]]) = val;
             break;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
-            *((uint64_t*) &data[offsets[colIndex]]) = val;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::setUintField: bad length");
@@ -1009,8 +1021,11 @@ inline void Row::setIntField(int64_t val, uint32_t colIndex)
         case 8:
             *((int64_t*) &data[offsets[colIndex]]) = val;
             break;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::setIntField: bad length");
@@ -1036,8 +1051,11 @@ inline void Row::setIntField(int64_t val, uint32_t colIndex)
         case 8:
             *((int64_t*) &data[offsets[colIndex]]) = val;
             break;
-        case 16:
-            std::cout << __FILE__<< ":" <<__LINE__ << " Fix for 16 Bytes ?" << std::endl;
+
+        // TODO: GG Add support for binary
+        // case 16:
+        // case 32:
+
         default:
             idbassert(0);
             throw std::logic_error("Row::setIntField: bad length");

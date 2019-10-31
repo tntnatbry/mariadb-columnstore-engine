@@ -124,7 +124,7 @@ int ColumnOp::allocRowId(const TxnID& txnid, bool useStartingExtent,
     Column newCol;
     unsigned char  buf[BYTE_PER_BLOCK];
     unsigned char* curVal;
-    int64_t emptyVal = getEmptyRowValue(column.colDataType, column.colWidth); // Seems is ok have it here and just once  
+    uint64_t emptyVal = getEmptyRowValue(column.colDataType, column.colWidth); // Seems is ok have it here and just once  
     
     if (useStartingExtent)
     {
