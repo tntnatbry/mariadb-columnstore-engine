@@ -87,7 +87,7 @@ inline uint32_t tid2sid(const uint32_t tid)
     return execplan::CalpontSystemCatalog::idb_tid2sid(tid);
 }
 
-//StopWatch timer;
+//logging::StopWatch timer("/tmp/mysqld_timer.log");
 uint32_t buildValueList (TABLE* table, cal_connection_info& ci )
 {
     char attribute_buffer[1024];
@@ -574,13 +574,13 @@ int ha_mcs_impl_write_last_batch(TABLE* table, cal_connection_info& ci, bool abo
 int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& ci, ha_rows& rowsInserted)
 {
     int rc = 0;
-    //timer.start( "buildValueList");
     ci.colNameList.clear();
     THD* thd = current_thd;
     uint32_t size = 0;
     std::string schema;
     schema = table->s->db.str;
 
+    //timer.start( "buildValueList");
     //@Bug 2086 Added syntax check for '\0'
     try
     {
@@ -594,11 +594,11 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
         thd->raise_error_printf(ER_INTERNAL_ERROR, rex.what());
         return rc;
     }
+    //timer.stop( "buildValueList");
 
     if (fBatchInsertGroupRows == 0)
         fBatchInsertGroupRows = ResourceManager::instance()->getRowsPerBatch();
 
-    //timer.stop( "buildValueList");
     if ( ci.singleInsert   // Single insert
             || (( ci.bulkInsertRows > 0 ) && (( ( ci.rowsHaveInserted + size) >= ci.bulkInsertRows ) || ( size >= fBatchInsertGroupRows )) )
             //Insert with mutilple value case: processed batch by batch. Last batch is sent also.

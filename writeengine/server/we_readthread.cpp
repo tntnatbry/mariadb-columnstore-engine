@@ -43,6 +43,7 @@ using namespace WriteEngine;
 //StopWatch timer;
 namespace WriteEngine
 {
+logging::StopWatch timer("/tmp/writeengine_timer.log");
 
 ReadThread::ReadThread(const IOSocket& ios): fIos(ios)
 {
@@ -154,9 +155,9 @@ void DmlReadThread::operator()()
 
                 case WE_SVR_BATCH_INSERT:
                 {
-                    //timer.start("processBatchInsert");
+                    timer.start("course-grained WriteEngine processBatchInsert");
                     rc = fWeDMLprocessor->processBatchInsert(ibs, errMsg, PMId);
-                    //timer.stop("processBatchInsert");
+                    timer.stop("course-grained WriteEngine processBatchInsert");
                     //cout << "fWeDMLprocessor " << fWeDMLprocessor << " is processing batchinsert ..." << endl;
                     break;
                 }
@@ -176,7 +177,7 @@ void DmlReadThread::operator()()
                 case WE_SVR_BATCH_INSERT_END:
                 {
                     rc = fWeDMLprocessor->processBatchInsertHwm(ibs, errMsg);
-                    //timer.finish();
+                    timer.finish();
                     break;
                 }
 

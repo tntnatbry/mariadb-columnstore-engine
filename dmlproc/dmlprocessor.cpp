@@ -45,6 +45,7 @@ using namespace boost;
 #include "sqllogger.h"
 #include "we_messages.h"
 #include "dmlprocessor.h"
+#include "stopwatch.h"
 using namespace BRM;
 using namespace config;
 using namespace execplan;
@@ -72,6 +73,7 @@ const std::string myname = "DMLProc";
 
 namespace dmlprocessor
 {
+logging::StopWatch timer("/tmp/dmlproc_timer.log");
 // Map to store the package handler objects so we can set flags during execution
 // for things like ctrl+c
 DMLProcessor::PackageHandlerMap_t DMLProcessor::packageHandlerMap;
@@ -607,6 +609,7 @@ void PackageHandler::run()
 
                     if ( insertPkg.get_Logging() )
                     {
+			timer.start("course-grained DMLProc batch insert");
                         LoggingID logid( DMLLoggingId, insertPkg.get_SessionID(), fTxnid);
                         logging::Message::Args args1;
                         logging::Message msg(1);
@@ -734,6 +737,8 @@ void PackageHandler::run()
                                 DMLProcessor::batchinsertProcessorMap.erase(fSessionID);
                             }
                         }
+			timer.stop("course-grained DMLProc batch insert");
+			timer.finish();
                     }
                     else if (insertPkg.get_Logending()) //Last batch
                     {
@@ -846,6 +851,8 @@ void PackageHandler::run()
                             }
                         }
 
+			timer.stop("course-grained DMLProc batch insert");
+			timer.finish();
                     }
                     else
                     {

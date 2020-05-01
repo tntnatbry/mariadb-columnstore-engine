@@ -25,6 +25,9 @@
 #include "ha_mcs_impl.h"
 #include "is_columnstore.h"
 #include "ha_mcs_version.h"
+#include "stopwatch.h"
+
+logging::StopWatch timer("/tmp/mysqld_timer.log");
 
 #ifndef COLUMNSTORE_MATURITY
 #define COLUMNSTORE_MATURITY MariaDB_PLUGIN_MATURITY_STABLE
@@ -366,6 +369,7 @@ int ha_mcs::write_row(const uchar* buf)
 void ha_mcs::start_bulk_insert(ha_rows rows, uint flags)
 {
     DBUG_ENTER("ha_mcs::start_bulk_insert");
+    timer.start("course-grained mysqld batch insert");
     try
     {
         ha_mcs_impl_start_bulk_insert(rows, table);
@@ -390,6 +394,8 @@ int ha_mcs::end_bulk_insert()
         current_thd->raise_error_printf(ER_INTERNAL_ERROR, e.what());
         rc = ER_INTERNAL_ERROR;
     }
+    timer.stop("course-grained mysqld batch insert");
+    timer.finish();
     DBUG_RETURN(rc);
 }
 
