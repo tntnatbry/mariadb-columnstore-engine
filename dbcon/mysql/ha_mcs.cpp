@@ -352,16 +352,18 @@ int ha_mcs::close(void)
 int ha_mcs::write_row(const uchar* buf)
 {
     DBUG_ENTER("ha_mcs::write_row");
+    timer.start("mysqld ha_mcs::write_row");
     int rc;
     try
     {
-        rc = ha_mcs_impl_write_row(buf, table, rows_changed);
+        rc = ha_mcs_impl_write_row(buf, table, rows_changed, timer);
     }
     catch (std::runtime_error& e)
     {
         current_thd->raise_error_printf(ER_INTERNAL_ERROR, e.what());
         rc = ER_INTERNAL_ERROR;
     }
+    timer.stop("mysqld ha_mcs::write_row");
 
     DBUG_RETURN(rc);
 }
@@ -369,7 +371,7 @@ int ha_mcs::write_row(const uchar* buf)
 void ha_mcs::start_bulk_insert(ha_rows rows, uint flags)
 {
     DBUG_ENTER("ha_mcs::start_bulk_insert");
-    timer.start("course-grained mysqld batch insert");
+    timer.start("mysqld ha_mcs::start_bulk_insert");
     try
     {
         ha_mcs_impl_start_bulk_insert(rows, table);
@@ -394,7 +396,7 @@ int ha_mcs::end_bulk_insert()
         current_thd->raise_error_printf(ER_INTERNAL_ERROR, e.what());
         rc = ER_INTERNAL_ERROR;
     }
-    timer.stop("course-grained mysqld batch insert");
+    timer.stop("mysqld ha_mcs::start_bulk_insert");
     timer.finish();
     DBUG_RETURN(rc);
 }

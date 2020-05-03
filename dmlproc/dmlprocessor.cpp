@@ -609,7 +609,7 @@ void PackageHandler::run()
 
                     if ( insertPkg.get_Logging() )
                     {
-			timer.start("course-grained DMLProc batch insert");
+			timer.start("DMLProc batch insert");
                         LoggingID logid( DMLLoggingId, insertPkg.get_SessionID(), fTxnid);
                         logging::Message::Args args1;
                         logging::Message msg(1);
@@ -737,7 +737,7 @@ void PackageHandler::run()
                                 DMLProcessor::batchinsertProcessorMap.erase(fSessionID);
                             }
                         }
-			timer.stop("course-grained DMLProc batch insert");
+			timer.stop("DMLProc batch insert");
 			timer.finish();
                     }
                     else if (insertPkg.get_Logending()) //Last batch
@@ -851,7 +851,7 @@ void PackageHandler::run()
                             }
                         }
 
-			timer.stop("course-grained DMLProc batch insert");
+			timer.stop("DMLProc batch insert");
 			timer.finish();
                     }
                     else

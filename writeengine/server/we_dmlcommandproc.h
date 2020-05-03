@@ -40,6 +40,7 @@
 #include "we_rbmetawriter.h"
 #include "rowgroup.h"
 #include "we_log.h"
+#include "stopwatch.h"
 
 #if defined(_MSC_VER) && defined(xxxDDLPKGPROC_DLLEXPORT)
 #define EXPORT __declspec(dllexport)
@@ -78,7 +79,7 @@ public:
     EXPORT uint8_t commitVersion(messageqcpp::ByteStream& bs, std::string& err);
     EXPORT uint8_t rollbackBlocks(messageqcpp::ByteStream& bs, std::string& err);
     EXPORT uint8_t rollbackVersion(messageqcpp::ByteStream& bs, std::string& err);
-    EXPORT uint8_t processBatchInsert(messageqcpp::ByteStream& bs, std::string& err, ByteStream::quadbyte& PMId);
+    EXPORT uint8_t processBatchInsert(messageqcpp::ByteStream& bs, std::string& err, ByteStream::quadbyte& PMId, logging::StopWatch&);
     EXPORT uint8_t processBatchInsertBinary(messageqcpp::ByteStream& bs, std::string& err, ByteStream::quadbyte& PMId);
     EXPORT uint8_t commitBatchAutoOn(messageqcpp::ByteStream& bs, std::string& err);
     EXPORT uint8_t commitBatchAutoOff(messageqcpp::ByteStream& bs, std::string& err);

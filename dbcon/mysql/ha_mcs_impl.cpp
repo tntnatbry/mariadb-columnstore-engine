@@ -3005,7 +3005,7 @@ int ha_mcs_impl_delete_table(const char* name)
     int rc = ha_mcs_impl_delete_table_(dbName, name, *ci);
     return rc;
 }
-int ha_mcs_impl_write_row(const uchar* buf, TABLE* table, uint64_t rows_changed)
+int ha_mcs_impl_write_row(const uchar* buf, TABLE* table, uint64_t rows_changed, logging::StopWatch& timer)
 {
     THD* thd = current_thd;
     // Error out INSERT on VIEW. It's currently not supported.
@@ -3057,7 +3057,7 @@ int ha_mcs_impl_write_row(const uchar* buf, TABLE* table, uint64_t rows_changed)
             //cout << "write_row starts a client " << ci->dmlProc << " for session " << thd->thread_id << endl;
         }
 
-        rc = ha_mcs_impl_write_row_(buf, table, *ci, rowsInserted);
+        rc = ha_mcs_impl_write_row_(buf, table, *ci, rowsInserted, timer);
 
     }
 

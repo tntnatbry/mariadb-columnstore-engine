@@ -253,7 +253,7 @@ int ProcessCommandStatement(THD* thd, string& dmlStatement, cal_connection_info&
     return rc;
 }
 
-int doProcessInsertValues ( TABLE* table, uint32_t size, cal_connection_info& ci, bool lastBatch = false )
+int doProcessInsertValues ( TABLE* table, uint32_t size, cal_connection_info& ci, logging::StopWatch& timer, bool lastBatch = false )
 {
     THD* thd = current_thd;
     uint32_t sessionID = tid2sid(thd->thread_id);
@@ -275,7 +275,9 @@ int doProcessInsertValues ( TABLE* table, uint32_t size, cal_connection_info& ci
                                 table->s->db.str, size, ci.colNameList.size(), ci.colNameList,
                                 ci.tableValuesMap, ci.nullValuesBitset, sessionID);
 
+    timer.start("mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues->makeCalpontDMLPackageFromMysqlBuffer");
     CalpontDMLPackage* pDMLPackage = CalpontDMLFactory::makeCalpontDMLPackageFromMysqlBuffer(dmlStmts);
+    timer.stop("mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues->makeCalpontDMLPackageFromMysqlBuffer");
     //@Bug 2466 Move the clean up earlier to avoid the second insert in another session to get the data
     ci.tableValuesMap.clear();
     ci.colNameList.clear();
@@ -492,6 +494,7 @@ int doProcessInsertValues ( TABLE* table, uint32_t size, cal_connection_info& ci
 
 int ha_mcs_impl_write_last_batch(TABLE* table, cal_connection_info& ci, bool abort)
 {
+    logging::StopWatch timer;
     int rc = 0;
     THD* thd = current_thd;
     std::string command;
@@ -510,7 +513,7 @@ int ha_mcs_impl_write_last_batch(TABLE* table, cal_connection_info& ci, bool abo
     if (( ci.rc != 0 ) || abort )
     {
         if (abort) //@Bug 5285. abort is different from error, dmlproc only clean up when erroring out
-            rc = doProcessInsertValues( table, size, ci, true);
+            rc = doProcessInsertValues( table, size, ci, timer, true);
 
         //@Bug 2722 Log the statement into datamod log
         //@Bug 4605 if error, rollback and no need to check whether the session is autocommit off
@@ -530,7 +533,7 @@ int ha_mcs_impl_write_last_batch(TABLE* table, cal_connection_info& ci, bool abo
     }
     else
     {
-        rc = doProcessInsertValues( table, size, ci, true);
+        rc = doProcessInsertValues( table, size, ci, timer, true);
     }
 
     if ( abort )
@@ -571,7 +574,7 @@ int ha_mcs_impl_write_last_batch(TABLE* table, cal_connection_info& ci, bool abo
 
 }
 
-int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& ci, ha_rows& rowsInserted)
+int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& ci, ha_rows& rowsInserted, logging::StopWatch& timer)
 {
     int rc = 0;
     ci.colNameList.clear();
@@ -580,11 +583,12 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
     std::string schema;
     schema = table->s->db.str;
 
-    //timer.start( "buildValueList");
     //@Bug 2086 Added syntax check for '\0'
     try
     {
+        timer.start( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->buildValueList");
         size = buildValueList ( table, ci );
+        timer.stop( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->buildValueList");
     }
     catch (runtime_error& rex)
     {
@@ -594,7 +598,6 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
         thd->raise_error_printf(ER_INTERNAL_ERROR, rex.what());
         return rc;
     }
-    //timer.stop( "buildValueList");
 
     if (fBatchInsertGroupRows == 0)
         fBatchInsertGroupRows = ResourceManager::instance()->getRowsPerBatch();
@@ -604,16 +607,19 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
             //Insert with mutilple value case: processed batch by batch. Last batch is sent also.
             || (( ci.bulkInsertRows == 0 ) && ( size >= fBatchInsertGroupRows ) )  ) // Load data in file is processed batch by batch
     {
-        //timer.start( "DMLProc takes");
         //cout <<" sending a batch to DMLProc ... The size is " << size << "  the current bulkInsertRows = " <<  ci.bulkInsertRows << endl;
         //Build dmlpackage
         if (( ci.bulkInsertRows > 0 ) && ( ( ci.rowsHaveInserted + size) >= ci.bulkInsertRows ))
         {
-            rc = doProcessInsertValues( table, size, ci, true );
+            timer.start( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues");
+            rc = doProcessInsertValues( table, size, ci, timer, true );
+            timer.stop( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues");
         }
         else
         {
-            rc = doProcessInsertValues( table, size, ci );
+            timer.start( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues");
+            rc = doProcessInsertValues( table, size, ci, timer );
+            timer.stop( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues");
         }
 
         if ( rc == 0 )
@@ -627,6 +633,7 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
 
         if ( ci.singleInsert  || ( (ci.bulkInsertRows > 0 ) && (( ci.rowsHaveInserted + size) >= ci.bulkInsertRows ) ) )
         {
+            timer.start( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->ProcessCommandStatement");
             if ( thd->killed > 0 )
             {
                 command = "ROLLBACK";
@@ -651,6 +658,7 @@ int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_connection_info& 
                     ProcessCommandStatement ( thd, command, ci, schema );
                 }
             }
+            timer.stop( "mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->ProcessCommandStatement");
         }
 
         //timer.stop( "DMLProc takes");

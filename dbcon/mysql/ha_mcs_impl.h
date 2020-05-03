@@ -20,6 +20,7 @@
 #define HA_MCS_IMPL_H__
 
 #include "idb_mysql.h"
+#include "stopwatch.h"
 
 #ifdef NEED_CALPONT_EXTERNS
 // Forward declaration.
@@ -32,7 +33,7 @@ extern int ha_mcs_impl_close(void);
 extern int ha_mcs_impl_rnd_init(TABLE* table);
 extern int ha_mcs_impl_rnd_next(uchar* buf, TABLE* table);
 extern int ha_mcs_impl_rnd_end(TABLE* table, bool is_derived_hand = false);
-extern int ha_mcs_impl_write_row(const uchar* buf, TABLE* table, uint64_t rows_changed);
+extern int ha_mcs_impl_write_row(const uchar* buf, TABLE* table, uint64_t rows_changed, logging::StopWatch&);
 extern void ha_mcs_impl_start_bulk_insert(ha_rows rows, TABLE* table);
 extern int ha_mcs_impl_end_bulk_insert(bool abort, TABLE* table);
 extern int ha_mcs_impl_rename_table(const char* from, const char* to);
@@ -58,7 +59,7 @@ extern int ha_mcs_impl_group_by_end(TABLE* table);
 #include "calpontsystemcatalog.h"
 #include "ha_mcs.h"
 extern int ha_mcs_impl_rename_table_(const char* from, const char* to, cal_impl_if::cal_connection_info& ci);
-extern int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_impl_if::cal_connection_info& ci, ha_rows& rowsInserted);
+extern int ha_mcs_impl_write_row_(const uchar* buf, TABLE* table, cal_impl_if::cal_connection_info& ci, ha_rows& rowsInserted, logging::StopWatch&);
 extern int ha_mcs_impl_write_batch_row_(const uchar* buf, TABLE* table, cal_impl_if::cal_connection_info& ci);
 extern int ha_mcs_impl_write_last_batch(TABLE* table, cal_impl_if::cal_connection_info& ci, bool abort);
 extern int ha_mcs_impl_commit_ (handlerton* hton, THD* thd, bool all, cal_impl_if::cal_connection_info& ci);

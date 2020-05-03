@@ -796,7 +796,7 @@ uint8_t WE_DMLCommandProc::rollbackVersion(ByteStream& bs, std::string& err)
     return rc;
 }
 
-uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::string& err, ByteStream::quadbyte& PMId)
+uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::string& err, ByteStream::quadbyte& PMId, logging::StopWatch& timer)
 {
     int rc = 0;
     //cout << "processBatchInsert received bytestream length " << bs.length() << endl;
@@ -807,7 +807,9 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
     //cout << "processBatchInsert got transaction id " << tmp32 << endl;
     bs >> PMId;
     //cout << "processBatchInsert gor PMId " << PMId << endl;
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert readFromBS");
     insertPkg.read( bs);
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert readFromBS");
     uint32_t sessionId = insertPkg.get_SessionID();
     //cout << " processBatchInsert for session " << sessionId << endl;
     DMLTable* tablePtr = insertPkg.get_Table();
@@ -1002,6 +1004,7 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
     std::vector<string> colNames;
     bool isWarningSet = false;
 
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData");
     if (rows.size())
     {
         Row* rowPtr = rows.at(0);
@@ -1082,6 +1085,7 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
 
                 while (row_iterator != rows.end())
                 {
+                    timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData->getOIDAndColType");
                     Row* rowPtr = *row_iterator;
                     const DMLColumn* columnPtr = rowPtr->get_ColumnAt(i);
 
@@ -1096,12 +1100,14 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
                     std::vector<std::string> origVals;
                     origVals = columnPtr->get_DataVector();
                     WriteEngine::dictStr dicStrings;
+                    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData->getOIDAndColType");
 
                     // token
                     if ( isDictCol(colType) )
                     {
                         for ( uint32_t i = 0; i < origVals.size(); i++ )
                         {
+                            timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData->dictCol");
                             tmpStr = origVals[i];
 
                             if ( tmpStr.length() == 0 )
@@ -1139,11 +1145,14 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
                             colTuples.push_back(colTuple);
                             //@Bug 2515. Only pass string values to write engine
                             dicStrings.push_back( tmpStr );
+                            timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData->dictCol");
                         }
 
+                        timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData->dictColBuildList");
                         colValuesList.push_back(colTuples);
                         //@Bug 2515. Only pass string values to write engine
                         dicStringList.push_back( dicStrings );
+                        timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData->dictColBuildList");
                     }
                     else
                     {
@@ -1204,6 +1213,7 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
 
                         for ( uint32_t i = 0; i < origVals.size(); i++ )
                         {
+                            timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData->nonDictCol");
                             indata = origVals[i];
 
                             if ( indata.length() == 0 )
@@ -1264,10 +1274,13 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
                             colTuples.push_back(colTuple);
                             //@Bug 2515. Only pass string values to write engine
                             dicStrings.push_back( tmpStr );
+                            timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData->nonDictCol");
                         }
 
+                        timer.start("writeengine WE_DMLCommandProc::processBatchInsert prepareData->nonDictColBuildList");
                         colValuesList.push_back(colTuples);
                         dicStringList.push_back( dicStrings );
+                        timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData->nonDictColBuildList");
                     }
 
                     ++row_iterator;
@@ -1287,10 +1300,12 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
             return rc;
         }
     }
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert prepareData");
 
     // call the write engine to write the rows
     int error = NO_ERROR;
 
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs");
     //fWriteEngine.setDebugLevel(WriteEngine::DEBUG_3);
     //cout << "Batch inserting a row with transaction id " << txnid.id << endl;
     if (colValuesList.size() > 0)
@@ -1307,7 +1322,7 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
 
             if (NO_ERROR !=
                     (error = fWEWrapper.insertColumnRecs(txnid.id, colStructs, colValuesList, dctnryStructList, dicStringList,
-                             dbRootExtTrackerVec, 0, bFirstExtentOnThisPM, isInsertSelect, isAutocommitOn, roPair.objnum, fIsFirstBatchPm)))
+                             dbRootExtTrackerVec, 0, bFirstExtentOnThisPM, timer, isInsertSelect, isAutocommitOn, roPair.objnum, fIsFirstBatchPm)))
             {
                 if (error == ERR_BRM_DEAD_LOCK)
                 {
@@ -1329,6 +1344,7 @@ uint8_t WE_DMLCommandProc::processBatchInsert(messageqcpp::ByteStream& bs, std::
             }
         }
     }
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs");
 
     if (fIsFirstBatchPm && isAutocommitOn)
     {

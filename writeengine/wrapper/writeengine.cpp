@@ -949,6 +949,7 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
         std::vector<boost::shared_ptr<DBRootExtentTracker> >& dbRootExtentTrackers,
         RBMetaWriter* fRBMetaWriter,
         bool bFirstExtentOnThisPM,
+	logging::StopWatch& timer,
         bool insertSelect,
         bool isAutoCommitOn,
         OID tableOid,
@@ -1381,6 +1382,7 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
     dictStr::iterator dctStr_iter;
     ColTupleList::iterator col_iter;
 
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->tokenize");
     for (i = 0; i < colStructList.size(); i++)
     {
         if (colStructList[i].tokenFlag)
@@ -1496,6 +1498,7 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
             }
         }
     }
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->tokenize");
 
     if (insertSelect && isAutoCommitOn)
         BRMWrapper::setUseVb( false );
@@ -1609,6 +1612,7 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
         tableMetaData->setColExtsInfo(colStructList[i].dataOid, aColExtsInfo);
     }
 
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->prepareValueList");
     //--------------------------------------------------------------------------
     //Prepare the valuelist for the new extent
     //--------------------------------------------------------------------------
@@ -1637,6 +1641,7 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
         colOldValueList.push_back(firstPartTupleList);
         firstPartTupleList.clear();
     }
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->prepareValueList");
 
     // end of allocate row id
 
@@ -1683,10 +1688,12 @@ int WriteEngineWrapper::insertColumnRecs(const TxnID& txnid,
         if (lbids.size() > 0)
             rc = BRMWrapper::getInstance()->markExtentsInvalid(lbids, colDataTypes);
 
+	timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec");
         //----------------------------------------------------------------------
         // Write row(s) to database file(s)
         //----------------------------------------------------------------------
-        rc = writeColumnRec(txnid, colStructList, colOldValueList, rowIdArray, newColStructList, colNewValueList, tableOid, useTmpSuffix); // @bug 5572 HDFS tmp file
+        rc = writeColumnRec(txnid, colStructList, colOldValueList, rowIdArray, newColStructList, colNewValueList, tableOid, useTmpSuffix, timer); // @bug 5572 HDFS tmp file
+	timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec");
     }
 
     return rc;
@@ -3031,13 +3038,14 @@ int WriteEngineWrapper::insertColumnRec_SYS(const TxnID& txnid,
         static boost::mutex dbrmMutex;
         boost::mutex::scoped_lock lk(dbrmMutex);
 
+	logging::StopWatch timer;
         if (newExtent)
         {
-            rc = writeColumnRec(txnid, colStructList, colOldValueList, rowIdArray, newColStructList, colNewValueList, tableOid, false); // @bug 5572 HDFS tmp file
+            rc = writeColumnRec(txnid, colStructList, colOldValueList, rowIdArray, newColStructList, colNewValueList, tableOid, false, timer); // @bug 5572 HDFS tmp file
         }
         else
         {
-            rc = writeColumnRec(txnid, colStructList, colValueList, rowIdArray, newColStructList, colNewValueList, tableOid, false); // @bug 5572 HDFS tmp file
+            rc = writeColumnRec(txnid, colStructList, colValueList, rowIdArray, newColStructList, colNewValueList, tableOid, false, timer); // @bug 5572 HDFS tmp file
         }
     }
 
@@ -3724,17 +3732,18 @@ int WriteEngineWrapper::insertColumnRec_Single(const TxnID& txnid,
 
     if (rc == NO_ERROR)
     {
+	logging::StopWatch timer;
         if (newExtent)
         {
             rc = writeColumnRec(txnid, colStructList, colOldValueList,
                                 rowIdArray, newColStructList, colNewValueList, tableOid,
-                                false); // @bug 5572 HDFS tmp file
+                                false, timer); // @bug 5572 HDFS tmp file
         }
         else
         {
             rc = writeColumnRec(txnid, colStructList, colValueList,
                                 rowIdArray, newColStructList, colNewValueList, tableOid,
-                                true); // @bug 5572 HDFS tmp file
+                                true, timer); // @bug 5572 HDFS tmp file
         }
     }
 
@@ -3948,7 +3957,8 @@ void WriteEngineWrapper::printInputValue(const ColStructList& colStructList,
  ***********************************************************/
 int WriteEngineWrapper::processVersionBuffer(IDBDataFile* pFile, const TxnID& txnid,
         const ColStruct& colStruct, int width,
-        int totalRow, const RID* rowIdArray, vector<LBIDRange>&   rangeList)
+        int totalRow, const RID* rowIdArray, vector<LBIDRange>&   rangeList,
+	logging::StopWatch& timer)
 {
     if (idbdatafile::IDBPolicy::useHdfs())
         return 0;
@@ -3967,8 +3977,11 @@ int WriteEngineWrapper::processVersionBuffer(IDBDataFile* pFile, const TxnID& tx
     {
         curRowId = rowIdArray[i];
         //cout << "processVersionBuffer got rid " << curRowId << endl;
+	timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->calculateRowId");
         successFlag = colOp->calculateRowId(curRowId, BYTE_PER_BLOCK / width, width, curFbo, curBio);
+	timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->calculateRowId");
 
+	timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->BRMWrapper::getInstance()->getBrmInfo");
         if (successFlag)
         {
             if (curFbo != lastFbo)
@@ -3985,11 +3998,14 @@ int WriteEngineWrapper::processVersionBuffer(IDBDataFile* pFile, const TxnID& tx
 
             lastFbo = curFbo;
         }
+	timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->BRMWrapper::getInstance()->getBrmInfo");
     }
 
     std::vector<VBRange> freeList;
+    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->BRMWrapper::getInstance()->writeVB");
     rc = BRMWrapper::getInstance()->
          writeVB(pFile, verId, colStruct.dataOid, fboList, rangeList, colOp, freeList, colStruct.fColDbRoot);
+    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer->BRMWrapper::getInstance()->writeVB");
 
     return rc;
 }
@@ -4624,6 +4640,7 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                                        ColValueList& newColValueList,
                                        const int32_t tableOid,
                                        bool useTmpSuffix,
+				       logging::StopWatch& timer,
                                        bool versioning)
 {
     bool           bExcp;
@@ -4708,10 +4725,11 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                 // handling versioning
                 vector<LBIDRange>   rangeList;
 
+	        timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer totalRow2, totalRow1 > 0");
                 if (versioning)
                 {
                     rc = processVersionBuffer(curCol.dataFile.pFile, txnid, colStructList[i],
-                                              colStructList[i].colWidth, totalRow1, firstPart, rangeList);
+                                              colStructList[i].colWidth, totalRow1, firstPart, rangeList, timer);
 
                     if (rc != NO_ERROR)
                     {
@@ -4724,6 +4742,7 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                         break;
                     }
                 }
+	        timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer totalRow2, totalRow1 > 0");
 
                 //totalRow1 -= totalRow2;
                 // have to init the size here
@@ -4791,7 +4810,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 
                     try
                     {
+	                timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray totalRow2, totalRow1 > 0");
                         convertValArray(totalRow1, colStructList[i].colType, colValueList[i], valArray);
+	                timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray totalRow2, totalRow1 > 0");
                     }
                     catch (...)
                     {
@@ -4809,7 +4830,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 #ifdef PROFILE
                     timer.start("writeRow ");
 #endif
+	            timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow totalRow2, totalRow1 > 0");
                     rc = colOp->writeRow(curCol, totalRow1, firstPart, valArray);
+	            timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow totalRow2, totalRow1 > 0");
 #ifdef PROFILE
                     timer.stop("writeRow ");
 #endif
@@ -4883,10 +4906,11 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
             // handling versioning
             vector<LBIDRange>   rangeList;
 
+	    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer totalRow2 > 0");
             if (versioning)
             {
                 rc = processVersionBuffer(curCol.dataFile.pFile, txnid, newColStructList[i],
-                                          newColStructList[i].colWidth, totalRow2, secondPart, rangeList);
+                                          newColStructList[i].colWidth, totalRow2, secondPart, rangeList, timer);
 
                 if (rc != NO_ERROR)
                 {
@@ -4899,6 +4923,7 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                     break;
                 }
             }
+	    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer totalRow2 > 0");
 
             //totalRow1 -= totalRow2;
             // have to init the size here
@@ -4966,7 +4991,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 
                 try
                 {
+	            timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray totalRow2 > 0");
                     convertValArray(totalRow2, newColStructList[i].colType, newColValueList[i], valArray);
+	            timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray totalRow2 > 0");
                 }
                 catch (...)
                 {
@@ -4984,7 +5011,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 #ifdef PROFILE
                 timer.start("writeRow ");
 #endif
+	        timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow totalRow2 > 0");
                 rc = colOp->writeRow(curCol, totalRow2, secondPart, valArray);
+	        timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow totalRow2 > 0");
 #ifdef PROFILE
                 timer.stop("writeRow ");
 #endif
@@ -5057,10 +5086,11 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
             // handling versioning
             vector<LBIDRange>   rangeList;
 
+	    timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer");
             if (versioning)
             {
                 rc = processVersionBuffer(curCol.dataFile.pFile, txnid, colStructList[i],
-                                          colStructList[i].colWidth, totalRow1, rowIdArray, rangeList);
+                                          colStructList[i].colWidth, totalRow1, rowIdArray, rangeList, timer);
 
                 if (rc != NO_ERROR)
                 {
@@ -5073,6 +5103,7 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
                     break;
                 }
             }
+	    timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->processVersionBuffer");
 
             // have to init the size here
 //       nullArray = (bool*) malloc(sizeof(bool) * totalRow);
@@ -5139,7 +5170,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 
                 try
                 {
+	            timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray");
                     convertValArray(totalRow1, colStructList[i].colType, colValueList[i], valArray);
+	            timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->convertValArray");
                 }
                 catch (...)
                 {
@@ -5157,7 +5190,9 @@ int WriteEngineWrapper::writeColumnRec(const TxnID& txnid,
 #ifdef PROFILE
                 timer.start("writeRow ");
 #endif
+	        timer.start("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow");
                 rc = colOp->writeRow(curCol, totalRow1, rowIdArray, valArray);
+	        timer.stop("writeengine WE_DMLCommandProc::processBatchInsert->insertColumnRecs->writeColumnRec->writeRow");
 #ifdef PROFILE
                 timer.stop("writeRow ");
 #endif
@@ -5287,8 +5322,9 @@ int WriteEngineWrapper::writeColumnRecBinary(const TxnID& txnid,
 
             if (versioning)
             {
+		logging::StopWatch timer;
                 rc = processVersionBuffer(curCol.dataFile.pFile, txnid, colStructList[i],
-                                          colStructList[i].colWidth, totalRow1, firstPart, rangeList);
+                                          colStructList[i].colWidth, totalRow1, firstPart, rangeList, timer);
 
                 if (rc != NO_ERROR)
                 {
@@ -5430,8 +5466,9 @@ int WriteEngineWrapper::writeColumnRecBinary(const TxnID& txnid,
 
             if (versioning)
             {
+		logging::StopWatch timer;
                 rc = processVersionBuffer(curCol.dataFile.pFile, txnid, newColStructList[i],
-                                          newColStructList[i].colWidth, totalRow2, secondPart, rangeList);
+                                          newColStructList[i].colWidth, totalRow2, secondPart, rangeList, timer);
 
                 if (rc != NO_ERROR)
                 {

@@ -155,9 +155,9 @@ void DmlReadThread::operator()()
 
                 case WE_SVR_BATCH_INSERT:
                 {
-                    timer.start("course-grained WriteEngine processBatchInsert");
-                    rc = fWeDMLprocessor->processBatchInsert(ibs, errMsg, PMId);
-                    timer.stop("course-grained WriteEngine processBatchInsert");
+                    timer.start("WriteEngine DmlReadThread::operator()()->processBatchInsert");
+                    rc = fWeDMLprocessor->processBatchInsert(ibs, errMsg, PMId, timer);
+                    timer.stop("WriteEngine DmlReadThread::operator()()->processBatchInsert");
                     //cout << "fWeDMLprocessor " << fWeDMLprocessor << " is processing batchinsert ..." << endl;
                     break;
                 }
@@ -176,7 +176,9 @@ void DmlReadThread::operator()()
 
                 case WE_SVR_BATCH_INSERT_END:
                 {
+                    timer.start("WriteEngine DmlReadThread::operator()()->processBatchInsertHwm");
                     rc = fWeDMLprocessor->processBatchInsertHwm(ibs, errMsg);
+                    timer.stop("WriteEngine DmlReadThread::operator()()->processBatchInsertHwm");
                     timer.finish();
                     break;
                 }

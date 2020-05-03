@@ -45,6 +45,7 @@
 #include "we_rbmetawriter.h"
 #include "brmtypes.h"
 #include "we_chunkmanager.h"
+#include "stopwatch.h"
 
 #define IO_BUFF_SIZE 81920
 
@@ -325,6 +326,7 @@ public:
                                 std::vector<boost::shared_ptr<DBRootExtentTracker> >& dbRootExtentTrackers,
                                 RBMetaWriter* fRBMetaWriter,
                                 bool bFirstExtentOnThisPM,
+				logging::StopWatch& timer,
                                 bool insertSelect = false,
                                 bool isAutoCommitOn = false,
                                 OID tableOid = 0,
@@ -663,7 +665,8 @@ private:
      */
     int processVersionBuffer(IDBDataFile* pFile, const TxnID& txnid, const ColStruct& colStruct,
                              int width, int totalRow, const RID* rowIdArray,
-                             std::vector<BRM::LBIDRange>&   rangeList);
+                             std::vector<BRM::LBIDRange>&   rangeList,
+			     logging::StopWatch&);
 
     /**
      * @brief Process version buffers for update and delete @Bug 1886,2870
@@ -694,7 +697,7 @@ private:
                        ColValueList& colValueList,
                        RID* rowIdArray, const ColStructList& newColStructList,
                        ColValueList& newColValueList, const int32_t tableOid,
-                       bool useTmpSuffix, bool versioning = true);
+                       bool useTmpSuffix, logging::StopWatch& timer, bool versioning = true);
 
     int writeColumnRecBinary(const TxnID& txnid, const ColStructList& colStructList,
                              std::vector<uint64_t>& colValueList,
