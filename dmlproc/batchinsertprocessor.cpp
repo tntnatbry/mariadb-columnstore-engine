@@ -40,6 +40,7 @@ using namespace batchloader;
 using namespace execplan;
 #include "idberrorinfo.h"
 #include "errorids.h"
+#include "stopwatch.h"
 using namespace logging;
 
 #include "dbrm.h"
@@ -51,6 +52,7 @@ boost::mutex fLock;
 
 namespace dmlprocessor
 {
+logging::StopWatch timer2("/tmp/batchinsertproc_timer.log");
 
 BatchInsertProc::BatchInsertProc(bool isAutocommitOn, uint32_t tableOid, execplan::CalpontSystemCatalog::SCN txnId, BRM::DBRM* aDbrm) :
     fTxnid(txnId), fIsAutocommitOn(isAutocommitOn), fTableOid(tableOid), fDbrm(aDbrm)
@@ -188,7 +190,9 @@ void BatchInsertProc::setLastPkg (bool lastPkg)
 void BatchInsertProc::addPkg(messageqcpp::ByteStream& insertBs)
 {
     boost::mutex::scoped_lock lk(fLock);
+    timer2.start("BatchInsertProc::addPkg->queue push");
     fInsertPkgQueue->push(insertBs);
+    timer2.stop("BatchInsertProc::addPkg->queue push");
 
 }
 
@@ -196,8 +200,10 @@ messageqcpp::ByteStream BatchInsertProc::getPkg()
 {
     messageqcpp::ByteStream bs;
     boost::mutex::scoped_lock lk(fLock);
+    timer2.start("BatchInsertProc::getPkg->queue front and pop");
     bs = fInsertPkgQueue->front();
     fInsertPkgQueue->pop();
+    timer2.stop("BatchInsertProc::getPkg->queue front and pop");
     return bs;
 }
 
@@ -213,6 +219,7 @@ void BatchInsertProc::buildPkg(messageqcpp::ByteStream& bs)
 
 void BatchInsertProc::buildLastPkg(messageqcpp::ByteStream& bs)
 {
+    timer2.finish();
     ByteStream::byte rt;
 
     // Bug 757. WriteEngineServer deletes metadata if ErrorCode != 0. With range warning,
@@ -286,7 +293,9 @@ void BatchInsertProc::sendNextBatch()
     if (fPmState[fCurrentPMid])
     {
         //cout << "current pm state for pm is true for pm " << fCurrentPMid << " this = " << this<< endl;
+        timer2.start("BatchInsertProc::fWEClient->write");
         fWEClient->write(bs, fCurrentPMid);
+        timer2.stop("BatchInsertProc::fWEClient->write");
         //cout << "batchinsertprocessor sent pkg to pmnum  " << fCurrentPMid << endl;
         fPmState[fCurrentPMid] = false;
         //cout << "set pm state to false for pm " << fCurrentPMid <<  " this = " << this << endl;
@@ -298,7 +307,9 @@ void BatchInsertProc::sendNextBatch()
         {
             //cout << "Read from WES for pm id " << (uint32_t) tmp32 << endl;
             bsIn.reset(new ByteStream());
+            timer2.start("BatchInsertProc::fWEClient->read");
             fWEClient->read(fUniqueId, bsIn);
+            timer2.stop("BatchInsertProc::fWEClient->read");
 
             if ( bsIn->length() == 0 ) //read error
             {
@@ -331,7 +342,9 @@ void BatchInsertProc::sendNextBatch()
         }
 
         //cout << "before batchinsertprocessor sent pkg to pm " << fCurrentPMid  << endl;
+        timer2.start("BatchInsertProc::fWEClient->write");
         fWEClient->write(bs, fCurrentPMid);
+        timer2.stop("BatchInsertProc::fWEClient->write");
         //cout << "batchinsertprocessor sent pkg to pm " << fCurrentPMid  << endl;
         fPmState[fCurrentPMid] = false;
         //cout << "set pm state to false for pm " << fCurrentPMid <<  " this = " << this << endl;
@@ -386,7 +399,9 @@ void BatchInsertProc::receiveOutstandingMsg()
 
             try
             {
+                timer2.start("BatchInsertProc::fWEClient->read");
                 fWEClient->read(fUniqueId, bsIn);
+                timer2.stop("BatchInsertProc::fWEClient->read");
 
                 if ( bsIn->length() == 0 ) //read error
                 {

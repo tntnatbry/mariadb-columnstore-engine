@@ -550,7 +550,9 @@ void PackageHandler::run()
                 dmlpackage::InsertDMLPackage insertPkg;
                 //boost::shared_ptr<messageqcpp::ByteStream> insertBs (new messageqcpp::ByteStream);
                 messageqcpp::ByteStream bsSave = *(fByteStream.get());
+		timer.start("DMLProc insertPkg.read");
                 insertPkg.read(*(fByteStream.get()));
+		timer.stop("DMLProc insertPkg.read");
 #ifdef MCOL_140
 
                 if (fConcurrentSupport)

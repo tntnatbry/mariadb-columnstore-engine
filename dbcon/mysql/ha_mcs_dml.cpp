@@ -354,7 +354,9 @@ int doProcessInsertValues ( TABLE* table, uint32_t size, cal_connection_info& ci
     ByteStream bytestream, bytestreamRcv;
     bytestream << sessionID;
 
+    timer.start("mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues->pDMLPackage->write");
     pDMLPackage->write(bytestream);
+    timer.stop("mysqld ha_mcs::write_row->ha_mcs_impl_write_row_->doProcessInsertValues->pDMLPackage->write");
     delete pDMLPackage;
 
     ByteStream::byte b = 0;
